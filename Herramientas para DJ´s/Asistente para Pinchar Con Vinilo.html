@@ -361,6 +361,96 @@
 .tap-btn:active{ transform:translateY(1px); }
 </style>
 
+
+<!-- === MOBILE RESPONSIVE OVERRIDES === -->
+<style id="mobile-overrides">
+@media (max-width: 599px) {
+  body { font-size: 15px; }
+  h1 { font-size: clamp(20px, 7vw, 28px); margin: 14px 8px 10px; }
+
+  /* Decks stack perfectly */
+  .wrap { padding: 0 8px 16px; gap: 12px; margin-bottom: 60px; }
+  .deck { padding: 12px 12px 14px; border-radius: 14px; }
+  .deck h2 { font-size: 1rem; letter-spacing: .08em; margin-bottom: 8px; }
+
+  /* Readouts: stack vertically on very small screens */
+  .readouts { grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0 6px; }
+  .tempo-box, .orig-box { padding: 10px 12px; min-height: 54px; border-radius: 12px; }
+  .tempo-title, .orig-title { font-size: .82rem; }
+  .tempo-value { font-size: clamp(15px, 5vw, 20px); }
+
+  /* BPM edit */
+  .bpm-edit { gap: 6px; margin: 6px 0 10px; }
+  .bpm-field { font-size: clamp(15px, 5vw, 20px); padding: 8px 6px; }
+  .btn { padding: 8px 10px; font-size: .9rem; }
+
+  /* Rail: put range controls ABOVE the fader */
+  .rail-wrap {
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    min-height: auto;
+    margin: 6px 0 10px;
+  }
+  .range-ctrls {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    justify-content: center;
+  }
+  .range-label { font-size: .85rem; white-space: nowrap; }
+  .range-select { padding: 6px 8px; font-size: .9rem; }
+
+  /* Rail itself: taller on mobile for touch */
+  .rail { width: 64px; height: 300px; }
+  .rail .edge { left: 5px; right: 5px; }
+  .thumb { width: 68px; height: 38px; font-size: 11px; border-radius: 12px; }
+  .thumb:focus { outline: 3px solid #2563eb; }
+
+  /* Thumb readout: show INSIDE rail overlay, centered at top */
+  .thumb-readout {
+    right: auto !important;
+    left: 50%;
+    top: 8px !important;
+    transform: translateX(-50%) !important;
+    min-width: 56px;
+    font-size: .8rem;
+    padding: 4px 8px;
+    border-radius: 8px;
+    background: rgba(29,41,68,.95);
+  }
+
+  /* Controls: 1 column on mobile */
+  .controls {
+    grid-template-columns: 1fr !important;
+    gap: 7px;
+  }
+  .controls .btn {
+    padding: 12px 10px;
+    font-size: .88rem;
+    text-align: center;
+    white-space: normal;
+    line-height: 1.3;
+  }
+
+  /* Footer chip */
+  .footer-chip { right: 10px; bottom: 10px; padding: 7px 12px; font-size: 11px; }
+
+  /* Stats text */
+  .stat { font-size: 12px; line-height: 1.4; }
+  .stat > div { margin: 2px 0; }
+  .chip { font-size: 11px; padding: 4px 8px; }
+  .tap-btn { padding: 5px 10px; font-size: .75rem; }
+}
+
+@media (max-width: 380px) {
+  .readouts { grid-template-columns: 1fr; }
+  .rail { height: 260px; }
+}
+</style>
 </head>
 <body>
   <h1>Dual Deck Vinyl Tempo Helper</h1>
