@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador Didáctico de Subgraves</title>
+    <style>
+        :root {
+            --bg-dark: #121212;
+            --bg-panel: #1e1e1e;
+            --bg-card: #2a2a2a;
+            --primary: #4CAF50;
+            --primary-hover: #45a049;
+            --text-main: #f0f0f0;
+            --text-muted: #aaaaaa;
+            --border: #333333;
+            --warning: #f44336;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- COLUMNA 1: CONTROLES --- */
+        #controls-container {
+            width: 350px;
+            background-color: var(--bg-panel);
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border);
+            z-index: 10;
+        }
+        #header, #global-controls, #footer-controls {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        #footer-controls { border-bottom: none; border-top: 1px solid var(--border); }
+        h2 { margin: 0 0 5px 0; color: var(--primary); font-size: 1.4em; }
+        p.subtitle { margin: 0; font-size: 0.85em; color: var(--text-muted); }
+        
+        #subs-list { flex-grow: 1; overflow-y: auto; padding: 20px; }
+        
+        .sub-card {
+            background-color: var(--bg-card); padding: 15px; border-radius: 6px;
+            margin-bottom: 15px; position: relative; border-left: 4px solid var(--primary);
+        }
+        .sub-card h3 { margin: 0 0 15px 0; font-size: 1em; }
+        .remove-btn {
+            position: absolute; top: 12px; right: 12px;
+            background-color: var(--warning); color: white; border: none;
+            border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 0.8em;
+        }
+        .remove-btn:hover { background-color: #d32f2f; }
+
+        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.85em; color: #ccc;}
+        input[type="range"] { width: 100%; margin-bottom: 12px; accent-color: var(--primary); }
+        .value-display { float: right; color: var(--primary); font-weight: bold; }
+        
+        button.action-btn, button.preset-btn {
+            width: 100%; padding: 10px; border: none; border-radius: 4px; 
+            cursor: pointer; font-weight: bold; margin-bottom: 8px; transition: 0.2s;
+        }
+        button.action-btn { background-color: var(--primary); color: white; font-size: 14px; }
+        button.action-btn:hover { background-color: var(--primary-hover); }
+        button.preset-btn { background-color: #333; color: white; font-size: 13px; border: 1px solid #555;}
+        button.preset-btn:hover { background-color: #444; }
+
+        /* Estilo para el botón de Inversión de Polaridad */
+        .invert-btn {
+            background-color: #444; color: white; border: 1px solid #555;
+            border-radius: 4px; padding: 6px 10px; cursor: pointer;
+            font-size: 0.85em; margin-bottom: 10px; width: 100%; transition: 0.2s;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .invert-btn:hover { background-color: #555; }
+        .invert-btn.active {
+            background-color: var(--warning); border-color: var(--warning); font-weight: bold;
+        }
+
+        /* --- COLUMNA 2: SIMULADOR --- */
+        #simulation {
+            flex-grow: 1;
+            display: flex; justify-content: center; align-items: center;
+            background-color: #050505; position: relative; padding: 20px;
+        }
+        canvas {
+            background-color: #000; box-shadow: 0 0 40px rgba(0,0,0,0.8);
+            max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 4px;
+        }
+
+        /* --- COLUMNA 3: GUÍA DIDÁCTICA --- */
+        #guide-container {
+            width: 400px; background-color: var(--bg-panel);
+            border-left: 1px solid var(--border); overflow-y: auto; padding: 20px;
+            box-sizing: border-box; line-height: 1.5;
+        }
+        .guide-section {
+            background-color: var(--bg-card); padding: 15px; border-radius: 6px;
+            margin-bottom: 20px; border-top: 3px solid #555; transition: 0.3s;
+        }
+        .guide-section.active { border-top-color: var(--primary); box-shadow: 0 4px 15px rgba(76, 175, 80, 0.2); }
+        .guide-section h3 { margin-top: 0; color: var(--primary); }
+        .guide-section h4 { margin: 15px 0 5px 0; color: #ddd; font-size: 0.95em; }
+        .guide-section ul { margin: 0; padding-left: 20px; font-size: 0.9em; color: #ccc; }
+        .guide-section p { font-size: 0.9em; color: #ccc; margin-top: 5px; }
+        .tag-pro { color: #4CAF50; font-weight: bold; }
+        .tag-con { color: #f44336; font-weight: bold; }
+        .tag-use { color: #2196F3; font-weight: bold; }
+
+    </style>
+</head>
+<body>
+
+    <div id="controls-container">
+        <div id="header">
+            <h2>Estudio de Subgraves</h2>
+            <p class="subtitle">Añade cajas, ajusta parámetros y observa la física.</p>
+        </div>
+
+        <div id="global-controls">
+            <label>Frecuencia Global (Hz): <span id="freqVal" class="value-display">60</span></label>
+            <input type="range" id="freq" min="30" max="120" value="60" step="1" oninput="updateFreq()">
+        </div>
+
+        <div id="subs-list"></div>
+
+        <div id="footer-controls">
+            <button class="action-btn" onclick="addSub()">+ Añadir Subgrave</button>
+            <h4 style="margin: 15px 0 10px 0; color: var(--text-muted); font-size: 0.9em;">Cargar Configuraciones Típicas:</h4>
+            <button class="preset-btn" onclick="presetLR()">1. L/R Tradicional (2 subs)</button>
+            <button class="preset-btn" onclick="presetCardioide()">2. Cardioide (2 subs)</button>
+            <button class="preset-btn" onclick="presetLineArray()">3. Arreglo en Línea (4 subs)</button>
+            <button class="preset-btn" onclick="presetEndFire()">4. Arreglo End-Fire (4 subs)</button>
+        </div>
+    </div>
+
+    <div id="simulation">
+        <canvas id="canvas" width="800" height="800"></canvas>
+    </div>
+
+    <div id="guide-container">
+        <h2 style="color: white; border-bottom: 1px solid #444; padding-bottom: 10px; margin-top: 0;">Guía Acústica</h2>
+        <p style="font-size: 0.9em; color: #bbb;">El rojo indica <b>suma</b> (interferencia constructiva, +6dB) y el azul/negro indica <b>cancelación</b> (interferencia destructiva, pérdida de graves).</p>
+
+        <div id="info-teoria" class="guide-section active">
+            <h3>¿Qué está pasando?</h3>
+            <p>El sonido viaja en ondas. Cuando las crestas de dos ondas coinciden en el espacio y en el tiempo, se suman (más volumen). Cuando la cresta de una coincide con el valle de la otra, se restan (silencio o cancelación).</p>
+            <p>Al mover los subgraves o cambiar su fase (tiempo electrónico), alteramos dónde ocurren estas sumas y restas en el recinto.</p>
+        </div>
+
+        <div id="info-lr" class="guide-section">
+            <h3>1. L/R Tradicional</h3>
+            <p>Consiste en colocar los subgraves a los lados del escenario, igual que los altavoces de medios/agudos.</p>
+            <ul>
+                <li><span class="tag-pro">Pros:</span> Fácil de montar, simétrico visualmente. No requiere procesamiento complejo.</li>
+                <li><span class="tag-con">Contras:</span> Genera el famoso <b>"Pasillo de Poder" (Power Alley)</b>, una franja de muchos graves en el centro y graves débiles e irregulares en los laterales (peinaje).</li>
+                <li><span class="tag-use">Uso típico:</span> Salas pequeñas, teatros, o eventos donde el espacio no permite otra colocación.</li>
+            </ul>
+        </div>
+
+        <div id="info-cardioide" class="guide-section">
+            <h3>2. Arreglo Cardioide</h3>
+            <p>Usa la cancelación a nuestro favor. Se coloca un subgrave delante del otro (o varios en un bloque). El trasero se invierte de polaridad y se le aplica un delay físico y/o electrónico.</p>
+            <ul>
+                <li><span class="tag-pro">Pros:</span> Cancela la energía hacia atrás (el escenario). ¡Los músicos y micrófonos lo agradecen! Sonido mucho más limpio y menos realimentación (feedback).</li>
+                <li><span class="tag-con">Contras:</span> Se sacrifica parte de la potencia frontal en comparación a poner todas las cajas mirando al frente.</li>
+                <li><span class="tag-use">Uso típico:</span> Escenarios de tamaño medio/grande, festivales, zonas residenciales donde hay que evitar el ruido trasero.</li>
+            </ul>
+        </div>
+
+        <div id="info-linea" class="guide-section">
+            <h3>3. Arreglo en Línea (Broadside)</h3>
+            <p>Se colocan los subgraves en línea recta a lo largo del frontal del escenario.</p>
+            <ul>
+                <li><span class="tag-pro">Pros:</span> Estrecha el haz de sonido. Dispara los graves muy lejos hacia el público y reduce el derrame hacia los lados del recinto (evitando rebotes en las paredes).</li>
+                <li><span class="tag-con">Contras:</span> Si la línea es muy larga, el haz es tan estrecho que las personas en las primeras filas de los laterales se quedan sin graves.</li>
+                <li><span class="tag-use">Uso típico:</span> Conciertos en estadios anchos, festivales al aire libre. A menudo se le aplica delay curvo para ensanchar el haz.</li>
+            </ul>
+        </div>
+
+        <div id="info-endfire" class="guide-section">
+            <h3>4. Arreglo End-Fire</h3>
+            <p>Los subgraves se colocan en "fila india", apuntando hacia el público. Se aplica delay a los delanteros para que "esperen" al sonido del último, creando un cañón de sonido hacia adelante.</p>
+            <ul>
+                <li><span class="tag-pro">Pros:</span> Gran impacto y suma hacia el frente en un rango amplio de frecuencias. Excelente rechazo hacia atrás.</li>
+                <li><span class="tag-con">Contras:</span> Consume mucha profundidad física (espacio que a menudo no se tiene delante del escenario).</li>
+                <li><span class="tag-use">Uso típico:</span> Grandes exteriores y festivales donde se busca máxima pegada frontal y limpieza en el escenario.</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+
+        const c = 343; // Velocidad del sonido
+        const scale = 25; // Escala: 1 metro = 25 píxeles
+
+        let frequency = 60;
+        let subwoofers = [];
+        let subCounter = 0;
+
+        function updateFreq() {
+            frequency = parseFloat(document.getElementById('freq').value);
+            document.getElementById('freqVal').innerText = frequency;
+            requestAnimationFrame(drawSimulation);
+        }
+
+        function addSub(x = 0, y = 0, phase = 0, inverted = false) {
+            const id = subCounter++;
+            subwoofers.push({ id, x, y, phase, inverted });
+            renderSubControls();
+            requestAnimationFrame(drawSimulation);
+        }
+
+        function removeSub(id) {
+            subwoofers = subwoofers.filter(sub => sub.id !== id);
+            renderSubControls();
+            requestAnimationFrame(drawSimulation);
+        }
+
+        function updateSubParam(id, param, value) {
+            const sub = subwoofers.find(s => s.id === id);
+            if (sub) {
+                sub[param] = parseFloat(value);
+                document.getElementById(`${param}Val-${id}`).innerText = value;
+                requestAnimationFrame(drawSimulation);
+            }
+        }
+
+        function toggleInvert(id) {
+            const sub = subwoofers.find(s => s.id === id);
+            if (sub) {
+                sub.inverted = !sub.inverted;
+                renderSubControls();
+                requestAnimationFrame(drawSimulation);
+            }
+        }
+
+        function renderSubControls() {
+            const container = document.getElementById('subs-list');
+            container.innerHTML = ''; 
+
+            subwoofers.forEach((sub, index) => {
+                const card = document.createElement('div');
+                card.className = 'sub-card';
+                card.innerHTML = `
+                    <h3>Subgrave ${index + 1}</h3>
+                    <button class="remove-btn" onclick="removeSub(${sub.id})">X</button>
+                    
+                    <button class="invert-btn ${sub.inverted ? 'active' : ''}" onclick="toggleInvert(${sub.id})">
+                        <span>Ø Invertir Polaridad (180°)</span>
+                        <span>${sub.inverted ? 'ON' : 'OFF'}</span>
+                    </button>
+
+                    <label>Pos X (Horizontal): <span id="xVal-${sub.id}" class="value-display">${sub.x.toFixed(1)}m</span></label>
+                    <input type="range" min="-15" max="15" value="${sub.x}" step="0.1" oninput="updateSubParam(${sub.id}, 'x', this.value)">
+                    
+                    <label>Pos Y (Profundidad): <span id="yVal-${sub.id}" class="value-display">${sub.y.toFixed(1)}m</span></label>
+                    <input type="range" min="-15" max="15" value="${sub.y}" step="0.1" oninput="updateSubParam(${sub.id}, 'y', this.value)">
+                    
+                    <label>Delay (Fase): <span id="phaseVal-${sub.id}" class="value-display">${sub.phase}°</span></label>
+                    <input type="range" min="0" max="360" value="${sub.phase}" step="1" oninput="updateSubParam(${sub.id}, 'phase', this.value)">
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function hsvToRgb(h, s, v) {
+            let r, g, b;
+            let i = Math.floor(h * 6), f = h * 6 - i, p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s);
+            switch (i % 6) {
+                case 0: r = v, g = t, b = p; break;
+                case 1: r = q, g = v, b = p; break;
+                case 2: r = p, g = v, b = t; break;
+                case 3: r = p, g = q, b = v; break;
+                case 4: r = t, g = p, b = v; break;
+                case 5: r = v, g = p, b = q; break;
+            }
+            return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+        }
+
+        function drawSimulation() {
+            if (subwoofers.length === 0) {
+                ctx.clearRect(0, 0, width, height);
+                return;
+            }
+
+            const imageData = ctx.createImageData(width, height);
+            const data = imageData.data;
+            const k = (2 * Math.PI * frequency) / c; 
+            const magnitudes = new Float32Array(width * height);
+            let maxMag = 0;
+
+            const sources = subwoofers.map(s => {
+                // Si la fase está invertida (cable mal soldado), añadimos 180 grados a la fase electrónica
+                const effectivePhase = s.phase + (s.inverted ? 180 : 0);
+                return {
+                    x: s.x, y: s.y, phaseRad: effectivePhase * (Math.PI / 180)
+                };
+            });
+
+            // El cálculo asume que "abajo" (+Y) es el público y "arriba" (-Y) es el escenario
+            for (let py = 0; py < height; py++) {
+                const y = (py - height / 2) / scale;
+                for (let px = 0; px < width; px++) {
+                    const x = (px - width / 2) / scale;
+                    let real = 0, imag = 0;
+
+                    for (let i = 0; i < sources.length; i++) {
+                        const s = sources[i];
+                        const d = Math.sqrt((x - s.x)**2 + (y - s.y)**2);
+                        if (d < 0.1) continue; 
+
+                        const phaseArg = k * d + s.phaseRad;
+                        const amplitude = 1 / d; 
+                        real += amplitude * Math.cos(phaseArg);
+                        imag += amplitude * Math.sin(phaseArg);
+                    }
+
+                    const mag = Math.sqrt(real**2 + imag**2);
+                    magnitudes[py * width + px] = mag;
+                    if (mag > maxMag) maxMag = mag;
+                }
+            }
+
+            for (let i = 0; i < magnitudes.length; i++) {
+                let normalized = Math.pow(magnitudes[i] / (maxMag || 1), 0.5); 
+                let hue = (1 - normalized) * 0.66; // 0.66 azul, 0.0 rojo
+                let rgb = hsvToRgb(hue, 1, normalized);
+                data[i * 4] = rgb[0];
+                data[i * 4 + 1] = rgb[1];
+                data[i * 4 + 2] = rgb[2];
+                data[i * 4 + 3] = 255; 
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+
+            // Dibujar Cajas
+            subwoofers.forEach((sub, index) => {
+                const px = (sub.x * scale) + width / 2;
+                const py = (sub.y * scale) + height / 2;
+                
+                // Dibujar un cuadrado para representar la caja del subgrave
+                ctx.fillStyle = sub.inverted ? '#f44336' : '#222'; // Rojo si la fase está invertida
+                ctx.fillRect(px - 10, py - 10, 20, 20);
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1.5;
+                ctx.strokeRect(px - 10, py - 10, 20, 20);
+                
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(index + 1, px, py);
+            });
+            
+            // Dibujar indicador de Escenario/Público
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText("↑ ZONA DE ESCENARIO ↑", width / 2, 30);
+            ctx.fillText("↓ ZONA DE PÚBLICO ↓", width / 2, height - 30);
+        }
+
+        // --- GESTIÓN DE LA GUÍA DIDÁCTICA ---
+        function highlightGuide(id) {
+            document.querySelectorAll('.guide-section').forEach(el => el.classList.remove('active'));
+            const target = document.getElementById(id);
+            if(target) {
+                target.classList.add('active');
+                target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        function clearSubs() { subwoofers = []; subCounter = 0; }
+        function setFreq(val) { document.getElementById('freq').value = val; updateFreq(); }
+
+        function presetLR() {
+            clearSubs(); setFreq(60);
+            addSub(-6, 0, 0);  
+            addSub(6, 0, 0);   
+            highlightGuide('info-lr');
+        }
+
+        function presetCardioide() {
+            clearSubs(); setFreq(60);
+            addSub(0, 0.7, 0);    // Frontal apuntando al público
+            addSub(0, -0.7, 0, true); // Trasero (se usa el botón "invertido" para invertir polaridad directamente)
+            highlightGuide('info-cardioide');
+        }
+
+        function presetLineArray() {
+            clearSubs(); setFreq(60);
+            addSub(-3, 0, 0); addSub(-1, 0, 0);
+            addSub(1, 0, 0); addSub(3, 0, 0);
+            highlightGuide('info-linea');
+        }
+
+        function presetEndFire() {
+            clearSubs(); setFreq(60);
+            // El sub de más atrás debe sonar primero (fase 0).
+            // Conforme avanzamos hacia el público (+Y), se añade retraso (mayor fase) 
+            // para "esperar" a la onda que viene desde atrás y empujarla.
+            addSub(0, 2.1, 270);    // Frente (público) - Máximo retraso
+            addSub(0, 0.7, 180);  
+            addSub(0, -0.7, 90);  
+            addSub(0, -2.1, 0);     // Atrás (escenario) - Dispara primero
+            highlightGuide('info-endfire');
+        }
+
+        // Iniciar
+        presetLR();
+        highlightGuide('info-teoria');
+    </script>
+</body>
+</html>

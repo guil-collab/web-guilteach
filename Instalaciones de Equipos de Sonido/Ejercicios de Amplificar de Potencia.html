@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Potencia Eléctrica</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0c0e13;--bg2:#13161d;--bg3:#1a1e28;--bg4:#222733;--bg5:#2a2f3e;
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
+  --text:#e4e6f0;--muted:#7e8494;--hint:#4a4f60;
+  --amber:#f0a322;--amberd:rgba(240,163,34,0.13);--amberb:rgba(240,163,34,0.22);
+  --teal:#18b882;--teald:rgba(24,184,130,0.1);--tealb:rgba(24,184,130,0.22);
+  --red:#e05252;--redd:rgba(224,82,82,0.1);--redb:rgba(224,82,82,0.22);
+  --blue:#4a9ef8;--blued:rgba(74,158,248,0.1);--blueb:rgba(74,158,248,0.22);
+  --purple:#9d7ef5;--purpled:rgba(157,126,245,0.1);
+}
+body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;font-size:15px;line-height:1.65;min-height:100vh}
+header{background:var(--bg2);border-bottom:1px solid var(--border);padding:1.5rem 1.5rem 1.2rem}
+.htag{font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--amber);margin-bottom:.4rem}
+header h1{font-size:clamp(18px,3vw,26px);font-weight:600;line-height:1.2}
+header p{color:var(--muted);font-size:13px;margin-top:.3rem}
+.topbar{display:flex;align-items:center;gap:.8rem;padding:.8rem 1.5rem;background:var(--bg2);border-bottom:1px solid var(--border);flex-wrap:wrap}
+.spacer{flex:1}
+.btn-sec{background:var(--bg4);color:var(--text);border:1px solid var(--border2);border-radius:7px;padding:7px 16px;font-size:13px;font-weight:500;cursor:pointer}
+.btn-sec:hover{background:var(--bg5)}
+.btn-pri{background:var(--amber);color:#000;border:none;border-radius:7px;padding:7px 20px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px}
+.btn-pri:hover{opacity:.85}
+.main{display:grid;grid-template-columns:1fr 1fr;max-width:1200px;margin:0 auto}
+@media(max-width:780px){.main{grid-template-columns:1fr}}
+.pleft{padding:1.5rem;border-right:1px solid var(--border)}
+.pright{padding:1.5rem}
+@media(max-width:780px){.pleft{border-right:none;border-bottom:1px solid var(--border)}}
+.slabel{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--amber);margin-bottom:.3rem}
+h2{font-size:18px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:1.3rem 0 .5rem}
+.circuit-box{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:.8rem;margin-bottom:1rem;overflow-x:auto}
+.topo-pill{display:inline-flex;align-items:center;gap:5px;background:var(--bg4);border:1px solid var(--border2);border-radius:5px;padding:3px 9px;font-size:11px;color:var(--muted);margin-bottom:.8rem}
+table.dt{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:1rem}
+table.dt th{background:var(--bg4);color:var(--muted);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;padding:.45rem .7rem;border:1px solid var(--border);text-align:left}
+table.dt td{padding:.45rem .7rem;border:1px solid var(--border);background:var(--bg3)}
+table.dt td.m{font-family:monospace;color:var(--amber)}
+.qlist{list-style:none;margin-bottom:1rem}
+.qlist li{display:flex;align-items:flex-start;gap:.6rem;padding:.45rem 0;border-bottom:1px solid var(--border);font-size:14px}
+.qlist li:last-child{border-bottom:none}
+.qn{width:22px;height:22px;border-radius:50%;background:var(--amberd);border:1px solid var(--amberb);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--amber);flex-shrink:0;margin-top:2px}
+.step{border:1px solid var(--border);border-radius:9px;margin-bottom:.5rem;overflow:hidden}
+.step-hd{display:flex;align-items:center;gap:.6rem;padding:.7rem .9rem;cursor:pointer;background:var(--bg3);user-select:none}
+.step-hd:hover{background:var(--bg4)}
+.step-sn{width:23px;height:23px;border-radius:50%;background:var(--amberd);border:1px solid var(--amberb);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--amber);flex-shrink:0}
+.step-t{font-weight:500;font-size:13px;flex:1}
+.step-arr{color:var(--muted);font-size:10px;transition:transform .2s}
+.step.open .step-arr{transform:rotate(180deg)}
+.step-bd{display:none;padding:.85rem .9rem 1rem;background:var(--bg2);border-top:1px solid var(--border)}
+.step.open .step-bd{display:block}
+.formula{display:block;background:var(--bg4);border:1px solid var(--border2);border-radius:6px;padding:.65rem 1rem;font-family:monospace;font-size:13px;color:var(--amber);text-align:center;margin:.55rem 0}
+.fi{font-family:monospace;font-size:13px;color:var(--amber);background:var(--bg4);padding:1px 5px;border-radius:3px}
+.rg{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:.8rem 0}
+.rc{background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:.7rem .9rem;text-align:center}
+.rl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:.2rem}
+.rv{font-family:monospace;font-size:20px;font-weight:700;color:var(--amber)}
+.ru{font-size:11px;color:var(--muted);margin-top:.1rem}
+table.rt{width:100%;border-collapse:collapse;font-size:12px;margin:.6rem 0}
+table.rt th{background:var(--bg4);color:var(--muted);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;padding:.4rem .6rem;border:1px solid var(--border)}
+table.rt td{padding:.4rem .6rem;border:1px solid var(--border);background:var(--bg3)}
+table.rt td.m{font-family:monospace;color:var(--amber)}
+table.rt tr:hover td{background:var(--bg4)}
+.alert{display:flex;gap:.6rem;align-items:flex-start;padding:.65rem .9rem;border-radius:6px;margin:.55rem 0;font-size:13px}
+.ai{flex-shrink:0;margin-top:1px}
+.al-a{background:var(--amberd);border:1px solid var(--amberb)}
+.al-t{background:var(--teald);border:1px solid var(--tealb)}
+.pol-row{display:flex;align-items:center;gap:8px;padding:.38rem 0;border-bottom:1px solid var(--border);font-size:13px}
+.pol-row:last-child{border-bottom:none}
+.pname{font-family:monospace;font-size:12px;font-weight:700;min-width:26px}
+.pp{background:rgba(24,184,130,.15);color:var(--teal);font-size:11px;font-weight:700;padding:1px 7px;border-radius:3px}
+.pn{background:rgba(224,82,82,.15);color:var(--red);font-size:11px;font-weight:700;padding:1px 7px;border-radius:3px}
+.badge{display:inline-block;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:700}
+.ba{background:var(--amberd);color:var(--amber);border:1px solid var(--amberb)}
+.bb{background:var(--blued);color:var(--blue);border:1px solid var(--blueb)}
+.bt{background:var(--teald);color:var(--teal);border:1px solid var(--tealb)}
+.bpp{background:var(--purpled);color:var(--purple);border:1px solid rgba(157,126,245,.22)}
+p{margin-bottom:.6rem;color:var(--text)}
+p:last-child{margin-bottom:0}
+strong{color:var(--text);font-weight:600}
+.tm{color:var(--muted)}
+hr{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{animation:spin .5s linear infinite;display:inline-block}
+</style>
+</head>
+<body>
+<header>
+  <div class="htag">Parte VIII · Electroacústica</div>
+  <h1>Cálculo de Potencia Eléctrica</h1>
+  <p>Generador de problemas — Circuitos mixtos con adaptación de impedancias</p>
+</header>
+<div class="topbar">
+  <div class="spacer"></div>
+  <button class="btn-sec" onclick="toggleAll()">Mostrar / ocultar soluciones</button>
+  <button class="btn-pri" onclick="newProblem()"><span id="spin">&#8635;</span> Nuevo problema</button>
+</div>
+<div class="main">
+  <div class="pleft">
+    <div class="slabel">Circuito</div>
+    <h2 id="prob-title">–</h2>
+    <div class="topo-pill" id="topo-pill">–</div>
+    <div class="circuit-box" id="circuit-box"></div>
+    <h3>Datos del problema</h3>
+    <table class="dt" id="datos-table"></table>
+    <h3>Se pide calcular</h3>
+    <ul class="qlist">
+      <li><span class="qn">a</span>Potencia total que entrega el amplificador</li>
+      <li><span class="qn">b</span>Impedancia de salida del amplificador</li>
+      <li><span class="qn">c</span>Tensión total que entrega el amplificador</li>
+      <li><span class="qn">d</span>Intensidad total que entrega el amplificador</li>
+      <li><span class="qn">e</span>Tensión en bornes de cada impedancia</li>
+      <li><span class="qn">f</span>Intensidad que circula por cada impedancia</li>
+      <li><span class="qn">g</span>Polaridad de cada impedancia</li>
+    </ul>
+  </div>
+  <div class="pright">
+    <div class="slabel">Solución</div>
+    <h2>Resolución paso a paso</h2>
+    <div id="steps-box"></div>
+    <div id="summary-box"></div>
+  </div>
+</div>
+
+<script>
+// ── helpers ──────────────────────────────────────────────
+var allOpen = false;
+var probN = 0;
+
+function f(v){ var n=Math.round(v*100)/100; return n%1===0?''+n:n.toFixed(2); }
+function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
+
+// ── topologies ───────────────────────────────────────────
+// Each produces: {Zeq, Ptotal, elements[], steps[]}
+
+// TOPO A: Z1 -- (Z2 || Z3) -- Z4
+function buildTopoA(){
+  var Ib = pick([1,1.414,2,2.828,4,5,7.07]);
+  var Z1 = pick([2,4,8,16]), Z4 = pick([2,4,8,16]);
+  var Z2 = pick([8,16,32]),  Z3 = pick([8,16,32]);
+  var Zpara = (Z2*Z3)/(Z2+Z3);
+  var Zeq = Z1+Zpara+Z4;
+  var P1=Math.round(Ib*Ib*Z1), P4=Math.round(Ib*Ib*Z4);
+  var Vp=Ib*Zpara;
+  var P2=Math.round(Vp*Vp/Z2), P3=Math.round(Vp*Vp/Z3);
+  var Ptotal=P1+P2+P3+P4;
+  var Vcarga=Math.sqrt((Ptotal/2)*Zeq);
+  var Itotal=Vcarga/Zeq;
+  var V1=Itotal*Z1, V4=Itotal*Z4, Vblock=Itotal*Zpara;
+  var I2=Vblock/Z2, I3=Vblock/Z3;
+  var els=[
+    {name:'Z1',Z:Z1,P:P1,V:f(V1),I:f(Itotal),pos:'entrada (izq)',neg:'nodo A'},
+    {name:'Z2',Z:Z2,P:P2,V:f(Vblock),I:f(I2),pos:'nodo A (arriba)',neg:'nodo B'},
+    {name:'Z3',Z:Z3,P:P3,V:f(Vblock),I:f(I3),pos:'nodo A (abajo)',neg:'nodo B'},
+    {name:'Z4',Z:Z4,P:P4,V:f(V4),I:f(Itotal),pos:'nodo B',neg:'retorno (der)'}
+  ];
+  var steps=[
+    {t:'Impedancia equivalente del bloque paralelo A–B',
+     b:'<p>Z2 y Z3 en paralelo:</p>'+
+       '<span class="formula">Z_AB = (Z2·Z3)/(Z2+Z3) = ('+Z2+'·'+Z3+')/'+(Z2+Z3)+' = '+f(Zpara)+' Ω</span>'+
+       '<p>Potencia del bloque: '+P2+'+'+P3+' = <strong>'+(P2+P3)+' W</strong></p>'},
+    {t:'a) Potencia total del amplificador',
+     b:'<span class="formula">P_total = '+P1+'+'+P2+'+'+P3+'+'+P4+' = <strong>'+Ptotal+' W</strong></span>'+
+       '<div class="alert al-a"><span class="ai">⚡</span><span>La potencia del amplificador es la suma de todas las potencias nominales de las impedancias.</span></div>'},
+    {t:'b) Impedancia de salida del amplificador',
+     b:'<span class="formula">Z_equiv = Z1 + Z_AB + Z4 = '+Z1+' + '+f(Zpara)+' + '+Z4+' = <strong>'+f(Zeq)+' Ω</strong></span>'+
+       '<p>Por adaptación de impedancias: <strong>Z_sal = '+f(Zeq)+' Ω</strong></p>'+
+       '<div class="alert al-t"><span class="ai">✓</span><span>Z_sal del amplificador = Z_equiv de la carga → máxima transferencia de potencia.</span></div>'},
+    {t:'c) Tensión total del amplificador',
+     b:'<p>Con adaptación, la potencia en la carga = P_total/2:</p>'+
+       '<span class="formula">V_carga = √(P_total/2 · Z_equiv) = √('+Ptotal/2+'·'+f(Zeq)+') = '+f(Vcarga)+' V</span>'+
+       '<span class="formula">V_amp = 2 · V_carga = <strong>'+f(2*Vcarga)+' V</strong></span>'+
+       '<div class="alert al-a"><span class="ai">💡</span><span>En adaptación: V_generador = 2·V_carga. La mitad cae en la Z interna del amplificador.</span></div>'},
+    {t:'d) Intensidad total del amplificador',
+     b:'<span class="formula">I_total = V_carga / Z_equiv = '+f(Vcarga)+' / '+f(Zeq)+' = <strong>'+f(Itotal)+' A</strong></span>'},
+    {t:'e) Tensión en bornes de cada impedancia',
+     b:'<span class="formula">V_Z1 = I_total · Z1 = '+f(Itotal)+'·'+Z1+' = <strong>'+f(V1)+' V</strong></span>'+
+       '<span class="formula">V_Z4 = I_total · Z4 = '+f(Itotal)+'·'+Z4+' = <strong>'+f(V4)+' V</strong></span>'+
+       '<p>Z2 y Z3 en paralelo → misma tensión:</p>'+
+       '<span class="formula">V_Z2 = V_Z3 = V_bloque = '+f(Itotal)+'·'+f(Zpara)+' = <strong>'+f(Vblock)+' V</strong></span>'+
+       '<p>Verificación: '+f(V1)+' + '+f(Vblock)+' + '+f(V4)+' = '+f(Math.round((V1+Vblock+V4)*100)/100)+' V ≈ '+f(Vcarga)+' V ✓</p>'},
+    {t:'f) Intensidad por cada impedancia',
+     b:'<span class="formula">I_Z1 = I_Z4 = I_total = <strong>'+f(Itotal)+' A</strong></span>'+
+       '<span class="formula">I_Z2 = V_bloque / Z2 = '+f(Vblock)+' / '+Z2+' = <strong>'+f(I2)+' A</strong></span>'+
+       '<span class="formula">I_Z3 = V_bloque / Z3 = '+f(Vblock)+' / '+Z3+' = <strong>'+f(I3)+' A</strong></span>'+
+       '<p>Comprobación nodo A: '+f(I2)+' + '+f(I3)+' = '+f(Math.round((I2+I3)*1000)/1000)+' A ≈ '+f(Itotal)+' A ✓</p>'},
+    {t:'g) Polaridad de cada impedancia',b:'__pol__'}
+  ];
+  return {name:'Serie + paralelo simple',desc:'Z1 — (Z2 ∥ Z3) — Z4',Zeq:Zeq,Ptotal:Ptotal,Vcarga:Vcarga,Itotal:Itotal,els:els,steps:steps,
+    svgFn: function(){ return svgTopoA(Z1,P1,Z2,P2,Z3,P3,Z4,P4); }};
+}
+
+// TOPO B: Z1 -- (Z2 || Z3 || Z4)
+function buildTopoB(){
+  var Ib = pick([1,1.414,2,2.828,4,5,7.07]);
+  var Z1 = pick([2,4,8,16]);
+  var Z2 = pick([8,16,32]), Z3 = pick([8,16,32]), Z4 = pick([8,16,32]);
+  var inv = 1/Z2+1/Z3+1/Z4, Zpara = 1/inv;
+  var Zeq = Z1+Zpara;
+  var P1=Math.round(Ib*Ib*Z1);
+  var Vp=Ib*Zpara;
+  var P2=Math.round(Vp*Vp/Z2), P3=Math.round(Vp*Vp/Z3), P4=Math.round(Vp*Vp/Z4);
+  var Ptotal=P1+P2+P3+P4;
+  var Vcarga=Math.sqrt((Ptotal/2)*Zeq);
+  var Itotal=Vcarga/Zeq;
+  var V1=Itotal*Z1, Vblock=Itotal*Zpara;
+  var I2=Vblock/Z2, I3=Vblock/Z3, I4=Vblock/Z4;
+  var els=[
+    {name:'Z1',Z:Z1,P:P1,V:f(V1),I:f(Itotal),pos:'entrada',neg:'nodo A'},
+    {name:'Z2',Z:Z2,P:P2,V:f(Vblock),I:f(I2),pos:'nodo A',neg:'retorno'},
+    {name:'Z3',Z:Z3,P:P3,V:f(Vblock),I:f(I3),pos:'nodo A',neg:'retorno'},
+    {name:'Z4',Z:Z4,P:P4,V:f(Vblock),I:f(I4),pos:'nodo A',neg:'retorno'}
+  ];
+  var steps=[
+    {t:'Impedancia del triple paralelo (nodo A)',
+     b:'<span class="formula">1/Z_A = 1/'+Z2+' + 1/'+Z3+' + 1/'+Z4+' = '+f(inv)+'</span>'+
+       '<span class="formula">Z_A = 1 / '+f(inv)+' = <strong>'+f(Zpara)+' Ω</strong></span>'},
+    {t:'a) Potencia total del amplificador',
+     b:'<span class="formula">P_total = '+P1+'+'+P2+'+'+P3+'+'+P4+' = <strong>'+Ptotal+' W</strong></span>'},
+    {t:'b) Impedancia de salida del amplificador',
+     b:'<span class="formula">Z_equiv = Z1 + Z_A = '+Z1+' + '+f(Zpara)+' = <strong>'+f(Zeq)+' Ω</strong></span>'+
+       '<div class="alert al-t"><span class="ai">✓</span><span>Z_sal = '+f(Zeq)+' Ω</span></div>'},
+    {t:'c) Tensión total del amplificador',
+     b:'<span class="formula">V_carga = √('+Ptotal/2+'·'+f(Zeq)+') = '+f(Vcarga)+' V</span>'+
+       '<span class="formula">V_amp = 2·'+f(Vcarga)+' = <strong>'+f(2*Vcarga)+' V</strong></span>'},
+    {t:'d) Intensidad total del amplificador',
+     b:'<span class="formula">I_total = '+f(Vcarga)+' / '+f(Zeq)+' = <strong>'+f(Itotal)+' A</strong></span>'},
+    {t:'e) Tensión en bornes de cada impedancia',
+     b:'<span class="formula">V_Z1 = '+f(Itotal)+'·'+Z1+' = <strong>'+f(V1)+' V</strong></span>'+
+       '<p>Z2, Z3, Z4 en paralelo → misma tensión:</p>'+
+       '<span class="formula">V_Z2 = V_Z3 = V_Z4 = '+f(Vblock)+' V</span>'},
+    {t:'f) Intensidad por cada impedancia',
+     b:'<span class="formula">I_Z1 = I_total = <strong>'+f(Itotal)+' A</strong></span>'+
+       '<span class="formula">I_Z2 = '+f(Vblock)+'/'+Z2+' = <strong>'+f(I2)+' A</strong></span>'+
+       '<span class="formula">I_Z3 = '+f(Vblock)+'/'+Z3+' = <strong>'+f(I3)+' A</strong></span>'+
+       '<span class="formula">I_Z4 = '+f(Vblock)+'/'+Z4+' = <strong>'+f(I4)+' A</strong></span>'+
+       '<p>Comp: '+f(I2)+'+'+f(I3)+'+'+f(I4)+' = '+f(Math.round((I2+I3+I4)*1000)/1000)+' ≈ '+f(Itotal)+' A ✓</p>'},
+    {t:'g) Polaridad de cada impedancia',b:'__pol__'}
+  ];
+  return {name:'Serie + triple paralelo',desc:'Z1 — (Z2 ∥ Z3 ∥ Z4)',Zeq:Zeq,Ptotal:Ptotal,Vcarga:Vcarga,Itotal:Itotal,els:els,steps:steps,
+    svgFn: function(){ return svgTopoB(Z1,P1,Z2,P2,Z3,P3,Z4,P4); }};
+}
+
+// TOPO C: (Z1||Z2) -- (Z3||Z4)
+function buildTopoC(){
+  var Ib = pick([1,1.414,2,2.828,4,5,7.07]);
+  var Z1=pick([8,16,32]),Z2=pick([8,16,32]),Z3=pick([8,16,32]),Z4=pick([8,16,32]);
+  var ZA=(Z1*Z2)/(Z1+Z2), ZB=(Z3*Z4)/(Z3+Z4);
+  var Zeq=ZA+ZB;
+  var VA=Ib*ZA, VB=Ib*ZB;
+  var P1=Math.round(VA*VA/Z1),P2=Math.round(VA*VA/Z2),P3=Math.round(VB*VB/Z3),P4=Math.round(VB*VB/Z4);
+  var Ptotal=P1+P2+P3+P4;
+  var Vcarga=Math.sqrt((Ptotal/2)*Zeq);
+  var Itotal=Vcarga/Zeq;
+  var VAc=Itotal*ZA,VBc=Itotal*ZB;
+  var I1=VAc/Z1,I2=VAc/Z2,I3=VBc/Z3,I4=VBc/Z4;
+  var els=[
+    {name:'Z1',Z:Z1,P:P1,V:f(VAc),I:f(I1),pos:'nodo A',neg:'nodo B'},
+    {name:'Z2',Z:Z2,P:P2,V:f(VAc),I:f(I2),pos:'nodo A',neg:'nodo B'},
+    {name:'Z3',Z:Z3,P:P3,V:f(VBc),I:f(I3),pos:'nodo C',neg:'nodo D'},
+    {name:'Z4',Z:Z4,P:P4,V:f(VBc),I:f(I4),pos:'nodo C',neg:'nodo D'}
+  ];
+  var steps=[
+    {t:'Impedancia de cada bloque paralelo',
+     b:'<p>Bloque izq (Z1∥Z2):</p>'+
+       '<span class="formula">Z_A = ('+Z1+'·'+Z2+')/'+(Z1+Z2)+' = '+f(ZA)+' Ω</span>'+
+       '<p>Bloque der (Z3∥Z4):</p>'+
+       '<span class="formula">Z_B = ('+Z3+'·'+Z4+')/'+(Z3+Z4)+' = '+f(ZB)+' Ω</span>'},
+    {t:'a) Potencia total del amplificador',
+     b:'<span class="formula">P_total = '+P1+'+'+P2+'+'+P3+'+'+P4+' = <strong>'+Ptotal+' W</strong></span>'},
+    {t:'b) Impedancia de salida del amplificador',
+     b:'<span class="formula">Z_equiv = Z_A + Z_B = '+f(ZA)+' + '+f(ZB)+' = <strong>'+f(Zeq)+' Ω</strong></span>'+
+       '<div class="alert al-t"><span class="ai">✓</span><span>Los dos bloques paralelo están en serie entre sí. Z_sal = '+f(Zeq)+' Ω.</span></div>'},
+    {t:'c) Tensión total del amplificador',
+     b:'<span class="formula">V_carga = √('+Ptotal/2+'·'+f(Zeq)+') = '+f(Vcarga)+' V</span>'+
+       '<span class="formula">V_amp = <strong>'+f(2*Vcarga)+' V</strong></span>'},
+    {t:'d) Intensidad total del amplificador',
+     b:'<span class="formula">I_total = '+f(Vcarga)+' / '+f(Zeq)+' = <strong>'+f(Itotal)+' A</strong></span>'},
+    {t:'e) Tensión en bornes de cada impedancia',
+     b:'<span class="formula">V_Z1 = V_Z2 = I_total·Z_A = '+f(Itotal)+'·'+f(ZA)+' = <strong>'+f(VAc)+' V</strong></span>'+
+       '<span class="formula">V_Z3 = V_Z4 = I_total·Z_B = '+f(Itotal)+'·'+f(ZB)+' = <strong>'+f(VBc)+' V</strong></span>'+
+       '<p>Comp: '+f(VAc)+' + '+f(VBc)+' = '+f(Math.round((VAc+VBc)*100)/100)+' ≈ '+f(Vcarga)+' V ✓</p>'},
+    {t:'f) Intensidad por cada impedancia',
+     b:'<span class="formula">I_Z1 = '+f(VAc)+'/'+Z1+' = <strong>'+f(I1)+' A</strong></span>'+
+       '<span class="formula">I_Z2 = '+f(VAc)+'/'+Z2+' = <strong>'+f(I2)+' A</strong></span>'+
+       '<span class="formula">I_Z3 = '+f(VBc)+'/'+Z3+' = <strong>'+f(I3)+' A</strong></span>'+
+       '<span class="formula">I_Z4 = '+f(VBc)+'/'+Z4+' = <strong>'+f(I4)+' A</strong></span>'+
+       '<p>Comp A: '+f(I1)+'+'+f(I2)+'='+f(Math.round((I1+I2)*1000)/1000)+' ≈ I_total ✓</p>'},
+    {t:'g) Polaridad de cada impedancia',b:'__pol__'}
+  ];
+  return {name:'Doble paralelo en serie',desc:'(Z1 ∥ Z2) — (Z3 ∥ Z4)',Zeq:Zeq,Ptotal:Ptotal,Vcarga:Vcarga,Itotal:Itotal,els:els,steps:steps,
+    svgFn: function(){ return svgTopoC(Z1,P1,Z2,P2,Z3,P3,Z4,P4); }};
+}
+
+// TOPO D: Z1 -- Z2 -- (Z3 || (Z4--Z5))
+function buildTopoD(){
+  var Ib = pick([1,1.414,2,2.828,4,5]);
+  var Z1=pick([2,4,8]),Z2=pick([2,4,8]);
+  var Z3=pick([8,16,32]),Z4=pick([4,8]),Z5=pick([4,8]);
+  var Z45=Z4+Z5, Zpara=(Z3*Z45)/(Z3+Z45);
+  var Zeq=Z1+Z2+Zpara;
+  var P1=Math.round(Ib*Ib*Z1),P2=Math.round(Ib*Ib*Z2);
+  var Vp=Ib*Zpara;
+  var I3=Vp/Z3,I45=Vp/Z45;
+  var P3=Math.round(I3*I3*Z3),P4=Math.round(I45*I45*Z4),P5=Math.round(I45*I45*Z5);
+  var Ptotal=P1+P2+P3+P4+P5;
+  var Vcarga=Math.sqrt((Ptotal/2)*Zeq);
+  var Itotal=Vcarga/Zeq;
+  var V1=Itotal*Z1,V2=Itotal*Z2,Vblock=Itotal*Zpara;
+  var I3c=Vblock/Z3,I45c=Vblock/Z45;
+  var V4=I45c*Z4,V5=I45c*Z5;
+  var els=[
+    {name:'Z1',Z:Z1,P:P1,V:f(V1),I:f(Itotal),pos:'entrada',neg:'nodo A'},
+    {name:'Z2',Z:Z2,P:P2,V:f(V2),I:f(Itotal),pos:'nodo A',neg:'nodo B'},
+    {name:'Z3',Z:Z3,P:P3,V:f(Vblock),I:f(I3c),pos:'nodo B',neg:'retorno'},
+    {name:'Z4',Z:Z4,P:P4,V:f(V4),I:f(I45c),pos:'nodo B',neg:'nodo C'},
+    {name:'Z5',Z:Z5,P:P5,V:f(V5),I:f(I45c),pos:'nodo C',neg:'retorno'}
+  ];
+  var steps=[
+    {t:'Impedancia del bloque anidado',
+     b:'<p>Z4 y Z5 en serie:</p>'+
+       '<span class="formula">Z45 = '+Z4+' + '+Z5+' = '+Z45+' Ω</span>'+
+       '<p>Z3 en paralelo con Z45:</p>'+
+       '<span class="formula">Z_bloque = ('+Z3+'·'+Z45+')/'+(Z3+Z45)+' = '+f(Zpara)+' Ω</span>'},
+    {t:'a) Potencia total del amplificador',
+     b:'<span class="formula">P_total = '+P1+'+'+P2+'+'+P3+'+'+P4+'+'+P5+' = <strong>'+Ptotal+' W</strong></span>'},
+    {t:'b) Impedancia de salida del amplificador',
+     b:'<span class="formula">Z_equiv = '+Z1+' + '+Z2+' + '+f(Zpara)+' = <strong>'+f(Zeq)+' Ω</strong></span>'+
+       '<div class="alert al-t"><span class="ai">✓</span><span>Z_sal = '+f(Zeq)+' Ω</span></div>'},
+    {t:'c) Tensión total del amplificador',
+     b:'<span class="formula">V_carga = √('+Ptotal/2+'·'+f(Zeq)+') = '+f(Vcarga)+' V</span>'+
+       '<span class="formula">V_amp = <strong>'+f(2*Vcarga)+' V</strong></span>'},
+    {t:'d) Intensidad total del amplificador',
+     b:'<span class="formula">I_total = '+f(Vcarga)+'/'+f(Zeq)+' = <strong>'+f(Itotal)+' A</strong></span>'},
+    {t:'e) Tensión en bornes de cada impedancia',
+     b:'<span class="formula">V_Z1 = '+f(Itotal)+'·'+Z1+' = <strong>'+f(V1)+' V</strong></span>'+
+       '<span class="formula">V_Z2 = '+f(Itotal)+'·'+Z2+' = <strong>'+f(V2)+' V</strong></span>'+
+       '<span class="formula">V_bloque = '+f(Itotal)+'·'+f(Zpara)+' = <strong>'+f(Vblock)+' V</strong></span>'+
+       '<span class="formula">V_Z3 = V_bloque = <strong>'+f(Vblock)+' V</strong></span>'+
+       '<span class="formula">V_Z4 = '+f(I45c)+'·'+Z4+' = <strong>'+f(V4)+' V</strong></span>'+
+       '<span class="formula">V_Z5 = '+f(I45c)+'·'+Z5+' = <strong>'+f(V5)+' V</strong></span>'},
+    {t:'f) Intensidad por cada impedancia',
+     b:'<span class="formula">I_Z1 = I_Z2 = I_total = <strong>'+f(Itotal)+' A</strong></span>'+
+       '<span class="formula">I_Z3 = '+f(Vblock)+'/'+Z3+' = <strong>'+f(I3c)+' A</strong></span>'+
+       '<span class="formula">I_Z4 = I_Z5 = '+f(Vblock)+'/'+Z45+' = <strong>'+f(I45c)+' A</strong></span>'+
+       '<p>Comp: '+f(I3c)+' + '+f(I45c)+' = '+f(Math.round((I3c+I45c)*1000)/1000)+' ≈ '+f(Itotal)+' A ✓</p>'},
+    {t:'g) Polaridad de cada impedancia',b:'__pol__'}
+  ];
+  return {name:'Serie doble + paralelo anidado',desc:'Z1—Z2—(Z3 ∥ (Z4—Z5))',Zeq:Zeq,Ptotal:Ptotal,Vcarga:Vcarga,Itotal:Itotal,els:els,steps:steps,
+    svgFn: function(){ return svgTopoD(Z1,P1,Z2,P2,Z3,P3,Z4,P4,Z5,P5); }};
+}
+
+// TOPO E: Z1 -- ((Z2--Z3)||(Z4--Z5)) -- Z6
+function buildTopoE(){
+  var Ib = pick([1,1.414,2,2.828,4,5]);
+  var Z1=pick([2,4,8]),Z6=pick([2,4,8]);
+  var Z2=pick([4,8,16]),Z3=pick([4,8,16]),Z4=pick([4,8,16]),Z5=pick([4,8,16]);
+  var Za=Z2+Z3,Zb=Z4+Z5,Zpara=(Za*Zb)/(Za+Zb);
+  var Zeq=Z1+Zpara+Z6;
+  var P1=Math.round(Ib*Ib*Z1),P6=Math.round(Ib*Ib*Z6);
+  var Vp=Ib*Zpara;
+  var Ia=Vp/Za,Ib2=Vp/Zb;
+  var P2=Math.round(Ia*Ia*Z2),P3=Math.round(Ia*Ia*Z3),P4=Math.round(Ib2*Ib2*Z4),P5=Math.round(Ib2*Ib2*Z5);
+  var Ptotal=P1+P2+P3+P4+P5+P6;
+  var Vcarga=Math.sqrt((Ptotal/2)*Zeq);
+  var Itotal=Vcarga/Zeq;
+  var V1=Itotal*Z1,V6=Itotal*Z6,Vblock=Itotal*Zpara;
+  var Iac=Vblock/Za,Ibc=Vblock/Zb;
+  var V2=Iac*Z2,V3=Iac*Z3,V4=Ibc*Z4,V5=Ibc*Z5;
+  var els=[
+    {name:'Z1',Z:Z1,P:P1,V:f(V1),I:f(Itotal),pos:'entrada',neg:'nodo A'},
+    {name:'Z2',Z:Z2,P:P2,V:f(V2),I:f(Iac),pos:'nodo A (rama sup)',neg:'nodo M'},
+    {name:'Z3',Z:Z3,P:P3,V:f(V3),I:f(Iac),pos:'nodo M',neg:'nodo B'},
+    {name:'Z4',Z:Z4,P:P4,V:f(V4),I:f(Ibc),pos:'nodo A (rama inf)',neg:'nodo N'},
+    {name:'Z5',Z:Z5,P:P5,V:f(V5),I:f(Ibc),pos:'nodo N',neg:'nodo B'},
+    {name:'Z6',Z:Z6,P:P6,V:f(V6),I:f(Itotal),pos:'nodo B',neg:'retorno'}
+  ];
+  var steps=[
+    {t:'Impedancia del bloque paralelo de pares',
+     b:'<p>Par superior (Z2+Z3):</p>'+
+       '<span class="formula">Za = '+Z2+'+'+Z3+' = '+Za+' Ω</span>'+
+       '<p>Par inferior (Z4+Z5):</p>'+
+       '<span class="formula">Zb = '+Z4+'+'+Z5+' = '+Zb+' Ω</span>'+
+       '<p>Ambos en paralelo:</p>'+
+       '<span class="formula">Z_bloque = ('+Za+'·'+Zb+')/'+(Za+Zb)+' = '+f(Zpara)+' Ω</span>'},
+    {t:'a) Potencia total del amplificador',
+     b:'<span class="formula">P_total = '+P1+'+'+P2+'+'+P3+'+'+P4+'+'+P5+'+'+P6+' = <strong>'+Ptotal+' W</strong></span>'},
+    {t:'b) Impedancia de salida del amplificador',
+     b:'<span class="formula">Z_equiv = '+Z1+' + '+f(Zpara)+' + '+Z6+' = <strong>'+f(Zeq)+' Ω</strong></span>'+
+       '<div class="alert al-t"><span class="ai">✓</span><span>Z_sal = '+f(Zeq)+' Ω</span></div>'},
+    {t:'c) Tensión total del amplificador',
+     b:'<span class="formula">V_carga = √('+Ptotal/2+'·'+f(Zeq)+') = '+f(Vcarga)+' V</span>'+
+       '<span class="formula">V_amp = <strong>'+f(2*Vcarga)+' V</strong></span>'},
+    {t:'d) Intensidad total del amplificador',
+     b:'<span class="formula">I_total = '+f(Vcarga)+'/'+f(Zeq)+' = <strong>'+f(Itotal)+' A</strong></span>'},
+    {t:'e) Tensión en bornes de cada impedancia',
+     b:'<span class="formula">V_Z1 = '+f(V1)+' V &nbsp; V_Z6 = '+f(V6)+' V</span>'+
+       '<span class="formula">V_bloque = '+f(Itotal)+'·'+f(Zpara)+' = '+f(Vblock)+' V</span>'+
+       '<span class="formula">V_Z2='+f(V2)+' V &nbsp; V_Z3='+f(V3)+' V &nbsp; (par sup, serie)</span>'+
+       '<span class="formula">V_Z4='+f(V4)+' V &nbsp; V_Z5='+f(V5)+' V &nbsp; (par inf, serie)</span>'},
+    {t:'f) Intensidad por cada impedancia',
+     b:'<span class="formula">I_Z1 = I_Z6 = I_total = <strong>'+f(Itotal)+' A</strong></span>'+
+       '<span class="formula">I_Z2 = I_Z3 = V_bloque/Za = '+f(Vblock)+'/'+Za+' = <strong>'+f(Iac)+' A</strong></span>'+
+       '<span class="formula">I_Z4 = I_Z5 = V_bloque/Zb = '+f(Vblock)+'/'+Zb+' = <strong>'+f(Ibc)+' A</strong></span>'+
+       '<p>Comp: '+f(Iac)+'+'+f(Ibc)+' = '+f(Math.round((Iac+Ibc)*1000)/1000)+' ≈ '+f(Itotal)+' A ✓</p>'},
+    {t:'g) Polaridad de cada impedancia',b:'__pol__'}
+  ];
+  return {name:'Pares en paralelo flanqueado',desc:'Z1—((Z2—Z3)∥(Z4—Z5))—Z6',Zeq:Zeq,Ptotal:Ptotal,Vcarga:Vcarga,Itotal:Itotal,els:els,steps:steps,
+    svgFn: function(){ return svgTopoE(Z1,P1,Z2,P2,Z3,P3,Z4,P4,Z5,P5,Z6,P6); }};
+}
+
+// ── SVG helpers ───────────────────────────────────────────
+var CO=['#f0a322','#4a9ef8','#18b882','#9d7ef5','#f06060','#f0c060'];
+var WC='#8b90a0';
+
+function wline(x1,y1,x2,y2){ return '<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="'+WC+'" stroke-width="1.5"/>'; }
+function zdot(x,y){ return '<circle cx="'+x+'" cy="'+y+'" r="3" fill="#f0a322"/>'; }
+function zamp(cx,cy){
+  return '<polygon points="'+(cx-20)+','+(cy-28)+' '+(cx-20)+','+(cy+28)+' '+(cx+20)+','+cy+'" fill="none" stroke="#f0a322" stroke-width="1.5"/>';
+}
+function zbox(x,y,w,h,lbl,info,col){
+  return '<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="4" fill="none" stroke="'+col+'" stroke-width="1.5"/>'+
+    '<text x="'+(x+w/2)+'" y="'+(y+h/2-4)+'" text-anchor="middle" fill="'+col+'" font-size="11" font-weight="700">'+lbl+'</text>'+
+    '<text x="'+(x+w/2)+'" y="'+(y+h/2+9)+'" text-anchor="middle" fill="#7e8494" font-size="9">'+info+'</text>';
+}
+function svgWrap(W,H,body){
+  return '<svg width="100%" viewBox="0 0 '+W+' '+H+'" font-family="system-ui,sans-serif">'+body+'</svg>';
+}
+function nodeLabel(x,y,txt,col){ col=col||'#f0a322'; return '<text x="'+x+'" y="'+y+'" fill="'+col+'" font-size="9" font-weight="700">'+txt+'</text>'; }
+
+// SVG TOPO A: Z1--(Z2||Z3)--Z4
+function svgTopoA(Z1,P1,Z2,P2,Z3,P3,Z4,P4){
+  var TY=130, AX=270, BX=450, Z2Y=70, Z3Y=190, RX=620, BY=270;
+  var s='';
+  s+=zamp(30,TY);
+  // amp out -> Z1
+  s+=wline(50,TY,90,TY);
+  s+=zbox(90,TY-17,100,34,'Z1',Z1+'Ω/'+P1+'W',CO[0]);
+  // Z1 -> node A
+  s+=wline(190,TY,AX,TY); s+=zdot(AX,TY);
+  // A -> Z2 top branch
+  s+=wline(AX,TY,AX,Z2Y+17);
+  s+=zbox(AX,Z2Y-17,100,34,'Z2',Z2+'Ω/'+P2+'W',CO[1]);
+  s+=wline(AX+100,Z2Y,BX,Z2Y);
+  // A -> Z3 bottom branch
+  s+=wline(AX,TY,AX,Z3Y-17);
+  s+=zbox(AX,Z3Y-17,100,34,'Z3',Z3+'Ω/'+P3+'W',CO[2]);
+  s+=wline(AX+100,Z3Y,BX,Z3Y);
+  // node B
+  s+=wline(BX,Z2Y,BX,TY); s+=wline(BX,Z3Y,BX,TY); s+=zdot(BX,TY);
+  // B -> Z4
+  s+=wline(BX,TY,BX+20,TY);
+  s+=zbox(BX+20,TY-17,100,34,'Z4',Z4+'Ω/'+P4+'W',CO[3]);
+  s+=wline(BX+120,TY,RX,TY);
+  // bottom rail
+  s+=wline(10,TY+28,10,BY); s+=wline(10,BY,RX,BY); s+=wline(RX,TY,RX,BY);
+  s+=nodeLabel(AX+4,TY-10,'A'); s+=nodeLabel(BX+4,TY-10,'B');
+  return svgWrap(RX+10,BY+10,s);
+}
+
+// SVG TOPO B: Z1--(Z2||Z3||Z4)
+function svgTopoB(Z1,P1,Z2,P2,Z3,P3,Z4,P4){
+  var TY=150,AX=260,BX=460,Y1=75,Y2=150,Y3=225,RX=570,BY=305;
+  var s='';
+  s+=zamp(30,TY);
+  s+=wline(50,TY,90,TY);
+  s+=zbox(90,TY-17,100,34,'Z1',Z1+'Ω/'+P1+'W',CO[0]);
+  s+=wline(190,TY,AX,TY); s+=zdot(AX,TY);
+  // 3 branches
+  s+=wline(AX,TY,AX,Y1+17);
+  s+=zbox(AX,Y1-17,100,34,'Z2',Z2+'Ω/'+P2+'W',CO[1]);
+  s+=wline(AX+100,Y1,BX,Y1);
+  s+=zbox(AX,Y2-17,100,34,'Z3',Z3+'Ω/'+P3+'W',CO[2]);
+  s+=wline(AX+100,Y2,BX,Y2);
+  s+=wline(AX,TY,AX,Y3-17);
+  s+=zbox(AX,Y3-17,100,34,'Z4',Z4+'Ω/'+P4+'W',CO[3]);
+  s+=wline(AX+100,Y3,BX,Y3);
+  // node B
+  s+=wline(BX,Y1,BX,Y3); s+=zdot(BX,Y1); s+=zdot(BX,Y2); s+=zdot(BX,Y3); s+=zdot(BX,TY);
+  s+=wline(BX,TY,RX,TY);
+  // bottom
+  s+=wline(10,TY+28,10,BY); s+=wline(10,BY,RX,BY); s+=wline(RX,TY,RX,BY);
+  s+=nodeLabel(AX+4,TY-10,'A'); s+=nodeLabel(BX+4,TY-10,'B');
+  return svgWrap(RX+10,BY+10,s);
+}
+
+// SVG TOPO C: (Z1||Z2)--(Z3||Z4)
+function svgTopoC(Z1,P1,Z2,P2,Z3,P3,Z4,P4){
+  var TY=140,AX=100,BX=260,CX=330,DX=490,RX=560,BY=270,Y1=70,Y2=210;
+  var s='';
+  s+=zamp(30,TY);
+  s+=wline(50,TY,AX,TY); s+=zdot(AX,TY);
+  // left block
+  s+=wline(AX,TY,AX,Y1+17);
+  s+=zbox(AX,Y1-17,100,34,'Z1',Z1+'Ω/'+P1+'W',CO[0]);
+  s+=wline(AX+100,Y1,BX,Y1);
+  s+=wline(AX,TY,AX,Y2-17);
+  s+=zbox(AX,Y2-17,100,34,'Z2',Z2+'Ω/'+P2+'W',CO[1]);
+  s+=wline(AX+100,Y2,BX,Y2);
+  s+=wline(BX,Y1,BX,Y2); s+=zdot(BX,Y1); s+=zdot(BX,Y2); s+=zdot(BX,TY);
+  // mid wire
+  s+=wline(BX,TY,CX,TY); s+=zdot(CX,TY);
+  // right block
+  s+=wline(CX,TY,CX,Y1+17);
+  s+=zbox(CX,Y1-17,100,34,'Z3',Z3+'Ω/'+P3+'W',CO[2]);
+  s+=wline(CX+100,Y1,DX,Y1);
+  s+=wline(CX,TY,CX,Y2-17);
+  s+=zbox(CX,Y2-17,100,34,'Z4',Z4+'Ω/'+P4+'W',CO[3]);
+  s+=wline(CX+100,Y2,DX,Y2);
+  s+=wline(DX,Y1,DX,Y2); s+=zdot(DX,Y1); s+=zdot(DX,Y2); s+=zdot(DX,TY);
+  s+=wline(DX,TY,RX,TY);
+  // bottom
+  s+=wline(10,TY+28,10,BY); s+=wline(10,BY,RX,BY); s+=wline(RX,TY,RX,BY);
+  s+=nodeLabel(AX+4,TY-10,'A'); s+=nodeLabel(BX+4,TY-10,'B');
+  s+=nodeLabel(CX+4,TY-10,'C','#18b882'); s+=nodeLabel(DX+4,TY-10,'D','#18b882');
+  return svgWrap(RX+10,BY+10,s);
+}
+
+// SVG TOPO D: Z1--Z2--(Z3||(Z4--Z5))
+function svgTopoD(Z1,P1,Z2,P2,Z3,P3,Z4,P4,Z5,P5){
+  var TY=145,BX=320,CX=540,Z3Y=75,Z4Y=215,RX=630,BY=295;
+  var s='';
+  s+=zamp(30,TY);
+  s+=wline(50,TY,90,TY);
+  s+=zbox(90,TY-17,90,34,'Z1',Z1+'Ω/'+P1+'W',CO[0]);
+  s+=wline(180,TY,200,TY);
+  s+=zbox(200,TY-17,90,34,'Z2',Z2+'Ω/'+P2+'W',CO[1]);
+  s+=wline(290,TY,BX,TY); s+=zdot(BX,TY);
+  // top branch Z3
+  s+=wline(BX,TY,BX,Z3Y+17);
+  s+=zbox(BX,Z3Y-17,100,34,'Z3',Z3+'Ω/'+P3+'W',CO[2]);
+  s+=wline(BX+100,Z3Y,CX,Z3Y);
+  // bottom branch Z4--Z5
+  s+=wline(BX,TY,BX,Z4Y-17);
+  s+=zbox(BX,Z4Y-17,90,34,'Z4',Z4+'Ω/'+P4+'W',CO[3]);
+  s+=wline(BX+90,Z4Y,BX+100,Z4Y);
+  s+=zbox(BX+100,Z4Y-17,90,34,'Z5',Z5+'Ω/'+P5+'W',CO[4]);
+  s+=wline(BX+190,Z4Y,CX,Z4Y);
+  // node C
+  s+=wline(CX,Z3Y,CX,Z4Y); s+=zdot(CX,Z3Y); s+=zdot(CX,Z4Y); s+=zdot(CX,TY);
+  s+=wline(CX,TY,RX,TY);
+  // bottom
+  s+=wline(10,TY+28,10,BY); s+=wline(10,BY,RX,BY); s+=wline(RX,TY,RX,BY);
+  s+=nodeLabel(BX+4,TY-10,'B'); s+=nodeLabel(CX+4,TY-10,'C');
+  s+='<text x="'+(BX+140)+'" y="'+(Z4Y+22)+'" text-anchor="middle" fill="#7e8494" font-size="8">serie</text>';
+  return svgWrap(RX+10,BY+10,s);
+}
+
+// SVG TOPO E: Z1--((Z2--Z3)||(Z4--Z5))--Z6
+function svgTopoE(Z1,P1,Z2,P2,Z3,P3,Z4,P4,Z5,P5,Z6,P6){
+  var TY=150,AX=210,BX=510,Y1=80,Y2=220,RX=680,BY=300;
+  var s='';
+  s+=zamp(30,TY);
+  s+=wline(50,TY,80,TY);
+  s+=zbox(80,TY-17,90,34,'Z1',Z1+'Ω/'+P1+'W',CO[0]);
+  s+=wline(170,TY,AX,TY); s+=zdot(AX,TY);
+  // top pair Z2--Z3
+  s+=wline(AX,TY,AX,Y1+17);
+  s+=zbox(AX,Y1-17,90,34,'Z2',Z2+'Ω/'+P2+'W',CO[1]);
+  s+=wline(AX+90,Y1,AX+100,Y1);
+  s+=zbox(AX+100,Y1-17,90,34,'Z3',Z3+'Ω/'+P3+'W',CO[2]);
+  s+=wline(AX+190,Y1,BX,Y1);
+  // bottom pair Z4--Z5
+  s+=wline(AX,TY,AX,Y2-17);
+  s+=zbox(AX,Y2-17,90,34,'Z4',Z4+'Ω/'+P4+'W',CO[3]);
+  s+=wline(AX+90,Y2,AX+100,Y2);
+  s+=zbox(AX+100,Y2-17,90,34,'Z5',Z5+'Ω/'+P5+'W',CO[4]);
+  s+=wline(AX+190,Y2,BX,Y2);
+  // node B
+  s+=wline(BX,Y1,BX,Y2); s+=zdot(BX,Y1); s+=zdot(BX,Y2); s+=zdot(BX,TY);
+  s+=wline(BX,TY,BX+20,TY);
+  s+=zbox(BX+20,TY-17,90,34,'Z6',Z6+'Ω/'+P6+'W',CO[5]);
+  s+=wline(BX+110,TY,RX,TY);
+  // bottom
+  s+=wline(10,TY+28,10,BY); s+=wline(10,BY,RX,BY); s+=wline(RX,TY,RX,BY);
+  s+=nodeLabel(AX+4,TY-10,'A'); s+=nodeLabel(BX+4,TY-10,'B');
+  s+='<text x="'+(AX+92)+'" y="'+(Y1+22)+'" text-anchor="middle" fill="#7e8494" font-size="8">serie</text>';
+  s+='<text x="'+(AX+92)+'" y="'+(Y2+22)+'" text-anchor="middle" fill="#7e8494" font-size="8">serie</text>';
+  return svgWrap(RX+10,BY+10,s);
+}
+
+// ── polarity body ─────────────────────────────────────────
+function polBody(els){
+  var html='<p>El terminal por donde <strong>entra</strong> la corriente es el polo <strong style="color:#18b882">+</strong>.</p><div>';
+  els.forEach(function(el,i){
+    html+='<div class="pol-row">'+
+      '<span class="pname" style="color:'+CO[i]+'">'+el.name+'</span>'+
+      '<span class="pp">+</span><span class="tm" style="font-size:12px">'+el.pos+'</span>'+
+      '<span style="margin:0 4px;color:#4a4f60">·</span>'+
+      '<span class="pn">−</span><span class="tm" style="font-size:12px">'+el.neg+'</span>'+
+      '</div>';
+  });
+  html+='</div>';
+  return html;
+}
+
+// ── render ────────────────────────────────────────────────
+function newProblem(){
+  probN++;
+  var sp=document.getElementById('spin');
+  sp.style.animation='spin .5s linear infinite';
+  setTimeout(function(){ sp.style.animation=''; },500);
+
+  var builders=[buildTopoA,buildTopoB,buildTopoC,buildTopoD,buildTopoE];
+  var prob=builders[Math.floor(Math.random()*builders.length)]();
+
+  // Title + pill
+  document.getElementById('prob-title').textContent='Amplificador con '+prob.els.length+' impedancias';
+  document.getElementById('topo-pill').innerHTML='&#9635; Topología: '+prob.desc;
+
+  // SVG
+  document.getElementById('circuit-box').innerHTML=prob.svgFn();
+
+  // Datos table
+  var dt='<thead><tr><th>Elem.</th><th>Impedancia</th><th>P. nominal</th></tr></thead><tbody>';
+  prob.els.forEach(function(el,i){
+    dt+='<tr><td><span class="badge" style="background:'+CO[i]+'22;color:'+CO[i]+';border:1px solid '+CO[i]+'44">'+el.name+'</span></td>'+
+        '<td class="m">'+el.Z+' Ω</td><td class="m">'+el.P+' W</td></tr>';
+  });
+  dt+='</tbody>';
+  document.getElementById('datos-table').innerHTML=dt;
+
+  // Steps
+  var stepsHTML='';
+  var letters='abcdefg';
+  prob.steps.forEach(function(st,i){
+    var body=st.b==='__pol__'?polBody(prob.els):st.b;
+    var prefix=i<7?'<span style="color:var(--amber);font-family:monospace;font-size:11px;margin-right:3px">'+letters[i]+')</span>':'';
+    stepsHTML+='<div class="step" id="st'+i+'">'+
+      '<div class="step-hd" onclick="toggleStep('+i+')">'+
+      '<div class="step-sn">'+(i+1)+'</div>'+
+      '<span class="step-t">'+prefix+st.t+'</span>'+
+      '<span class="step-arr">&#9660;</span>'+
+      '</div>'+
+      '<div class="step-bd">'+body+'</div>'+
+      '</div>';
+  });
+  document.getElementById('steps-box').innerHTML=stepsHTML;
+
+  // Summary
+  var bc=['ba','bb','bt','bpp','ba','ba'];
+  var rrows=prob.els.map(function(el,i){
+    return '<tr>'+
+      '<td><span class="badge '+bc[i]+'">'+el.name+'</span></td>'+
+      '<td class="m">'+el.Z+'</td><td class="m">'+el.P+'</td>'+
+      '<td class="m">'+el.V+'</td><td class="m">'+el.I+'</td></tr>';
+  }).join('');
+  document.getElementById('summary-box').innerHTML=
+    '<h3 style="margin-top:1.5rem">Resumen de resultados</h3>'+
+    '<div class="rg">'+
+      '<div class="rc"><div class="rl">Potencia total</div><div class="rv">'+prob.Ptotal+'</div><div class="ru">W</div></div>'+
+      '<div class="rc"><div class="rl">Z salida amp.</div><div class="rv">'+f(prob.Zeq)+'</div><div class="ru">Ω</div></div>'+
+      '<div class="rc"><div class="rl">Tensión amp.</div><div class="rv">'+f(2*prob.Vcarga)+'</div><div class="ru">V</div></div>'+
+      '<div class="rc"><div class="rl">I total</div><div class="rv">'+f(prob.Itotal)+'</div><div class="ru">A</div></div>'+
+    '</div>'+
+    '<table class="rt"><thead><tr><th>Z</th><th>Ω</th><th>Pnom(W)</th><th>V(V)</th><th>I(A)</th></tr></thead>'+
+    '<tbody>'+rrows+'</tbody></table>';
+
+  allOpen=false;
+}
+
+function toggleStep(i){
+  document.getElementById('st'+i).classList.toggle('open');
+}
+
+function toggleAll(){
+  allOpen=!allOpen;
+  document.querySelectorAll('.step').forEach(function(s){
+    if(allOpen) s.classList.add('open'); else s.classList.remove('open');
+  });
+}
+
+// Init
+newProblem();
+</script>
+</body>
+</html>

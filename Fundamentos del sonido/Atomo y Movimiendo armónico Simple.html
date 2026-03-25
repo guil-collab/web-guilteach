@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador: Átomo de Sonido y Gradiente de Presión</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #1a1a1a;
+            color: #eee;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        h1 { margin-bottom: 10px; }
+        .canvas-container {
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            background-color: #000;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        canvas { display: block; }
+        .controls {
+            margin-top: 20px;
+            background: #333;
+            padding: 15px;
+            border-radius: 8px;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        .legend {
+            margin-top: 20px;
+            max-width: 800px;
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 5px solid #3498db;
+        }
+        button {
+            padding: 10px 20px;
+            cursor: pointer;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button:hover { background: #2980b9; }
+        .highlight { color: #e74c3c; font-weight: bold; }
+        .math-box {
+            font-family: 'Courier New', monospace;
+            background: #111;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>El "Átomo" de Sonido y el Gradiente de Presión</h1>
+    
+    <div class="canvas-container">
+        <canvas id="waveCanvas" width="800" height="400"></canvas>
+    </div>
+
+    <div class="controls">
+        <button id="btnPause">Pausar / Reanudar</button>
+        <label>
+            Frecuencia: <input type="range" id="freqSlider" min="1" max="10" value="3">
+        </label>
+    </div>
+
+    <div class="legend">
+        <h3>¿Qué está pasando aquí?</h3>
+        <p>Observa la <span class="highlight">Partícula Roja</span> (nuestro "átomo" de sonido):</p>
+        <ul>
+            <li><strong>Las flechas verdes</strong> representan la presión (el empujón) de los vecinos.
+                <ul>
+                    <li>Si el vecino izquierdo está muy cerca, empuja fuerte hacia la derecha.</li>
+                    <li>Si el vecino derecho está muy cerca, empuja fuerte hacia la izquierda.</li>
+                </ul>
+            </li>
+            <li><strong>La flecha ROJA GRUESA</strong> es la <strong>Fuerza Neta</strong>. Es la resta de los dos empujones.</li>
+        </ul>
+        <p><strong>La Clave Matemática:</strong> Fíjate que la fuerza neta (flecha roja) es máxima NO cuando la presión es máxima, sino cuando hay más <em>desequilibrio</em> entre izquierda y derecha.</p>
+        <p class="math-box">Fuerza = -(Presión_Derecha - Presión_Izquierda)</p>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('waveCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let isPaused = false;
+        let time = 0;
+        
+        // Configuración de la onda
+        const numParticles = 25;
+        const spacing = canvas.width / (numParticles + 1);
+        const particles = [];
+        let frequency = 0.05;
+        const amplitude = 15; // Qué tanto se mueven
+
+        // Inicializar partículas
+        for (let i = 0; i < numParticles; i++) {
+            particles.push({
+                xEq: (i + 1) * spacing, // Posición de equilibrio
+                x: 0,
+                y: canvas.height / 2
+            });
+        }
+
+        document.getElementById('btnPause').addEventListener('click', () => {
+            isPaused = !isPaused;
+            if (!isPaused) animate();
+        });
+
+        document.getElementById('freqSlider').addEventListener('input', (e) => {
+            frequency = e.target.value * 0.02;
+        });
+
+        function animate() {
+            if (isPaused) return;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Dibujar fondo de referencia
+            ctx.strokeStyle = '#333';
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height/2);
+            ctx.lineTo(canvas.width, canvas.height/2);
+            ctx.stroke();
+
+            // Actualizar posiciones (Onda viajera longitudinal)
+            // s(x,t) = A * cos(kx - wt)
+            for (let i = 0; i < particles.length; i++) {
+                const p = particles[i];
+                // Desfase basado en posición inicial para crear efecto de onda viajera
+                const phase = p.xEq * 0.05; 
+                const displacement = amplitude * Math.cos(phase - time * frequency * 5);
+                p.x = p.xEq + displacement;
+            }
+
+            // DIBUJAR
+            for (let i = 0; i < particles.length; i++) {
+                const p = particles[i];
+                
+                // Determinar si es la partícula "Héroe" (la roja del medio)
+                const isHero = i === 12; 
+
+                // Dibujar partícula
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, isHero ? 10 : 5, 0, Math.PI * 2);
+                ctx.fillStyle = isHero ? '#e74c3c' : '#bdc3c7';
+                ctx.fill();
+
+                // Lógica de Presión y Fuerza para la partícula Roja
+                if (isHero) {
+                    const prevP = particles[i - 1];
+                    const nextP = particles[i + 1];
+
+                    // Distancias actuales
+                    const distLeft = p.x - prevP.x;
+                    const distRight = nextP.x - p.x;
+
+                    // Presión es inversamente proporcional a la distancia
+                    // (Cuanto más cerca, más presión/repulsión)
+                    // Usamos una constante arbitraria para visualización
+                    const pressureLeft = 1000 / (distLeft * distLeft); 
+                    const pressureRight = 1000 / (distRight * distRight);
+
+                    // Limitar valores para que no exploten visualmente
+                    const pL_vis = Math.min(pressureLeft, 80);
+                    const pR_vis = Math.min(pressureRight, 80);
+
+                    // DIBUJAR FLECHAS DE PRESIÓN (VERDES)
+                    // Empuje desde la izquierda (hacia la derecha)
+                    drawArrow(ctx, p.x - 15, p.y - 20, pL_vis, 0, '#2ecc71', 2);
+                    // Empuje desde la derecha (hacia la izquierda)
+                    drawArrow(ctx, p.x + 15, p.y - 20, pR_vis, Math.PI, '#2ecc71', 2);
+
+                    // FUERZA NETA (ROJA)
+                    // Es la diferencia
+                    const netForce = pL_vis - pR_vis;
+                    const dir = netForce > 0 ? 0 : Math.PI; // Derecha o Izquierda
+                    
+                    // Dibujamos la fuerza neta abajo
+                    drawArrow(ctx, p.x, p.y + 30, Math.abs(netForce) * 2, dir, '#e74c3c', 4);
+
+                    // Textos
+                    ctx.fillStyle = '#aaa';
+                    ctx.font = '12px Arial';
+                    ctx.fillText("Presión Izq", p.x - 60, p.y - 35);
+                    ctx.fillText("Presión Der", p.x + 20, p.y - 35);
+                    ctx.fillStyle = '#e74c3c';
+                    ctx.font = 'bold 14px Arial';
+                    ctx.fillText("Fuerza Neta", p.x - 30, p.y + 60);
+                }
+            }
+
+            time++;
+            requestAnimationFrame(animate);
+        }
+
+        // Función auxiliar para dibujar flechas
+        function drawArrow(ctx, x, y, length, angle, color, width) {
+            if (length < 1) return;
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = width;
+            
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(length, 0);
+            ctx.stroke();
+
+            // Punta de flecha
+            ctx.beginPath();
+            ctx.moveTo(length, 0);
+            ctx.lineTo(length - 5, -3);
+            ctx.lineTo(length - 5, 3);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+
+        animate();
+    </script>
+</body>
+</html>

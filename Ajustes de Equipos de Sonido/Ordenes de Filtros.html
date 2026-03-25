@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aula de Audio: Orden y Fase</title>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --dark: #1e293b;
+            --accent: #f59e0b;
+            --danger: #ef4444;
+            --bg: #f1f5f9;
+            --card-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg);
+            color: var(--dark);
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background: linear-gradient(135deg, #0f172a, #334155);
+            color: white;
+            padding: 3rem 1rem;
+            text-align: center;
+        }
+
+        header h1 { margin: 0; font-size: 3rem; }
+        header p { font-size: 1.3rem; opacity: 0.8; margin-top: 10px; }
+
+        .container {
+            max-width: 1000px; /* Más ancho para la gráfica */
+            margin: -30px auto 0;
+            padding: 0 1rem 3rem;
+            position: relative;
+            z-index: 10;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            padding: 2.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        h2 { 
+            color: var(--dark); 
+            border-bottom: 3px solid #e2e8f0; 
+            padding-bottom: 0.5rem; 
+            margin-top: 0;
+        }
+
+        /* SIMULADOR */
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .btn-order {
+            padding: 1.5rem 1rem;
+            border: 2px solid #cbd5e1;
+            background: white;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 1.1rem;
+            transition: all 0.2s ease;
+            text-align: center;
+            color: #64748b;
+        }
+
+        .btn-order:hover { transform: translateY(-3px); border-color: var(--primary); }
+        .btn-order.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+
+        .display-screen {
+            background: #0f172a;
+            color: #4ade80;
+            padding: 2rem;
+            border-radius: 16px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-box {
+            background: rgba(255,255,255,0.05);
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid var(--accent);
+        }
+        
+        .stat-label { display: block; color: #94a3b8; font-size: 0.9rem; margin-bottom: 5px; }
+        .stat-value { font-size: 1.8rem; font-weight: bold; }
+        .stat-formula { color: #64748b; font-size: 0.9rem; }
+
+        /* GRÁFICA SVG GRANDE */
+        .graph-wrapper {
+            width: 100%;
+            height: 400px; /* Altura aumentada significativamente */
+            border: 1px solid #334155;
+            background: #1e293b;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        svg { width: 100%; height: 100%; }
+        
+        .grid-line { stroke: #334155; stroke-dasharray: 5; }
+        .axis-text { fill: #94a3b8; font-size: 14px; }
+        .curve { 
+            fill: none; 
+            stroke-width: 5; /* Línea más gruesa */
+            stroke-linecap: round;
+            transition: d 0.6s cubic-bezier(0.4, 0, 0.2, 1); 
+        }
+
+        /* SECCIÓN FASE */
+        .phase-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .phase-visual {
+            background: #f8fafc;
+            padding: 2rem;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+        }
+
+        .phase-clock {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            border: 8px solid #e2e8f0;
+            margin: 0 auto 1rem;
+            position: relative;
+            background: conic-gradient(var(--accent) var(--degrees, 0deg), transparent 0);
+            transition: --degrees 0.5s;
+        }
+        
+        /* Definimos propiedad custom para la animación del gradiente (funciona en navegadores modernos) */
+        @property --degrees {
+            syntax: '<angle>';
+            initial-value: 0deg;
+            inherits: false;
+        }
+
+        .phase-list li {
+            margin-bottom: 1rem;
+            padding-left: 1rem;
+            border-left: 3px solid #cbd5e1;
+        }
+        
+        .warning-box {
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            font-weight: bold;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .controls { grid-template-columns: 1fr 1fr; }
+            .stats-grid, .phase-grid { grid-template-columns: 1fr; }
+            .graph-wrapper { height: 250px; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>🎛️ Audio Lab</h1>
+    <p>Simulador de Filtros: Orden, Magnitud y Fase</p>
+</header>
+
+<div class="container">
+
+    <section class="card">
+        <h2 style="text-align: center;">Visualizador de Órdenes</h2>
+        
+        <div class="controls">
+            <button class="btn-order" onclick="setOrder(1)">1º Orden<br><small>(n=1)</small></button>
+            <button class="btn-order" onclick="setOrder(2)">2º Orden<br><small>(n=2)</small></button>
+            <button class="btn-order" onclick="setOrder(3)">3º Orden<br><small>(n=3)</small></button>
+            <button class="btn-order active" onclick="setOrder(4)">4º Orden<br><small>(n=4)</small></button>
+        </div>
+
+        <div class="display-screen">
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <span class="stat-label">Pendiente (Atenuación)</span>
+                    <div class="stat-value" id="slope-display">-24 dB/oct</div>
+                    <div class="stat-formula" id="slope-formula">Fórmula: 4 × -6dB</div>
+                </div>
+                <div class="stat-box" style="border-color: #3b82f6;">
+                    <span class="stat-label">Desfase en Frecuencia Corte</span>
+                    <div class="stat-value" id="phase-display">180°</div>
+                    <div class="stat-formula" id="phase-formula">Fórmula: 4 × 45°</div>
+                </div>
+            </div>
+
+            <div class="graph-wrapper">
+                <svg viewBox="0 0 800 400" preserveAspectRatio="none">
+                    <line x1="50" y1="50" x2="750" y2="50" stroke="#475569" stroke-width="2"/>
+                    <text x="10" y="55" class="axis-text">0 dB</text>
+
+                    <line x1="400" y1="20" x2="400" y2="380" stroke="#64748b" stroke-dasharray="8"/>
+                    <text x="410" y="370" class="axis-text" style="fill:white;">Fc (Corte)</text>
+
+                    <line x1="50" y1="200" x2="750" y2="200" class="grid-line" opacity="0.3"/>
+                    <text x="10" y="205" class="axis-text">-dB</text>
+
+                    <path id="filter-curve" class="curve" stroke="#3b82f6" d="" />
+                    
+                    <circle id="cut-marker" cx="400" cy="50" r="8" fill="#f59e0b" stroke="white" stroke-width="2"/>
+                </svg>
+            </div>
+            <p id="graph-comment" style="text-align: center; color: #94a3b8; margin-top: 1rem; font-style: italic;">
+                Visualizando filtro de 4º Orden (Linkwitz-Riley Standard)
+            </p>
+        </div>
+    </section>
+
+    <section class="card">
+        <h2>🌀 Profundizando en la Fase</h2>
+        <div class="phase-grid">
+            
+            <div class="phase-text">
+                <p>El "orden" no solo baja el volumen, también <strong>retrasa la señal en el tiempo</strong>. Este retraso se mide en grados en la frecuencia de corte.</p>
+                <ul class="phase-list">
+                    <li><strong>1º Orden (45°):</strong> Desfase mínimo. La suma de señales es constructiva pero no perfecta (+3dB).</li>
+                    <li><strong>2º Orden (90°):</strong> Desfase importante. En la frecuencia de cruce, la señal está "a mitad de camino".</li>
+                    <li><strong>3º Orden (135°):</strong> Desfase severo. Pendiente pronunciada pero respuesta de fase compleja.</li>
+                    <li><strong>4º Orden (180°):</strong> <span style="color:var(--danger); font-weight:bold;">¡Peligro de Cancelación!</span> 180° significa que la onda está totalmente invertida (espejo) respecto a la original.</li>
+                </ul>
+                <div id="phase-warning" class="warning-box" style="display:none;">
+                    ⚠️ ATENCIÓN: Con un filtro de 4º Orden (180°), es común tener que invertir la polaridad del altavoz para evitar cancelaciones en el punto de cruce.
+                </div>
+            </div>
+
+            <div class="phase-visual">
+                <h3>Reloj de Fase</h3>
+                <div class="phase-clock" id="phase-clock-visual" style="background: conic-gradient(#f59e0b 180deg, #e2e8f0 0deg);"></div>
+                <p id="phase-desc" style="font-weight: bold; font-size: 1.2rem;">180 Grados</p>
+                <p style="font-size: 0.9rem; color: #64748b;">(Media vuelta de ciclo)</p>
+            </div>
+
+        </div>
+    </section>
+
+    <section class="card">
+        <h2>Tipos de Curva: BUT vs LR</h2>
+        <p>Independientemente de la pendiente, el "apellido" del filtro define cómo se comporta exactamente al llegar al límite:</p>
+        <table style="width:100%; text-align:left; border-collapse:collapse;">
+            <tr style="border-bottom:1px solid #e2e8f0;">
+                <th style="padding:10px;">Tipo</th>
+                <th>En el punto de corte (Fc)</th>
+                <th>Características</th>
+            </tr>
+            <tr style="border-bottom:1px solid #e2e8f0;">
+                <td style="padding:10px; color:#8b5cf6; font-weight:bold;">Butterworth</td>
+                <td>Baja <strong>-3 dB</strong></td>
+                <td>Máxima planitud en la banda pasante. Al sumar dos vías puede haber un pico de volumen (+3dB).</td>
+            </tr>
+            <tr>
+                <td style="padding:10px; color:#f59e0b; font-weight:bold;">Linkwitz-Riley</td>
+                <td>Baja <strong>-6 dB</strong></td>
+                <td>Suma perfecta (0dB) entre vías. Es el estándar en audio profesional (generalmente orden 4).</td>
+            </tr>
+        </table>
+    </section>
+
+</div>
+
+<script>
+    function setOrder(n) {
+        // 1. Actualizar botones visualmente
+        document.querySelectorAll('.btn-order').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.btn-order')[n-1].classList.add('active');
+
+        // 2. Cálculos matemáticos
+        const slope = n * -6;
+        const phase = n * 45;
+
+        // 3. Actualizar textos de datos
+        document.getElementById('slope-display').textContent = slope + " dB/oct";
+        document.getElementById('slope-formula').textContent = `Fórmula: ${n} × -6dB`;
+        
+        document.getElementById('phase-display').textContent = phase + "°";
+        document.getElementById('phase-formula').textContent = `Fórmula: ${n} × 45°`;
+
+        // 4. Lógica de la Gráfica SVG (Coordenadas ajustadas al viewBox 800x400)
+        // El punto de corte está en X=400.
+        // 0dB está en Y=50.
+        // La caída visual debe ser proporcional al orden.
+        
+        const path = document.getElementById('filter-curve');
+        const marker = document.getElementById('cut-marker');
+        const comment = document.getElementById('graph-comment');
+        let d = "";
+        let markerY = 0;
+
+        // Definimos curvas de Bezier para simular las pendientes
+        if (n === 1) {
+            // Suave
+            d = "M 50 50 Q 300 50 400 90 T 750 200";
+            markerY = 90; // Aprox -3dB visual escalado
+            comment.textContent = "1º Orden: Caída muy lenta. La señal invade mucho la zona de corte.";
+        } else if (n === 2) {
+            // Media
+            d = "M 50 50 Q 350 50 400 120 T 750 300";
+            markerY = 120;
+            comment.textContent = "2º Orden: Caída estándar. Usado habitualmente en Hi-Fi.";
+        } else if (n === 3) {
+            // Fuerte
+            d = "M 50 50 H 200 Q 380 50 400 140 T 700 380";
+            markerY = 140; 
+            comment.textContent = "3º Orden: Pendiente agresiva. Atenuación rápida.";
+        } else if (n === 4) {
+            // Muy fuerte (LR4 style)
+            d = "M 50 50 H 250 Q 380 50 400 160 L 550 400"; // Línea recta final para simular pendiente abrupta
+            markerY = 160; // -6dB visual escalado
+            comment.textContent = "4º Orden: Corte abrupto y limpio. Estándar profesional.";
+        }
+
+        path.setAttribute('d', d);
+        marker.setAttribute('cy', markerY);
+
+        // 5. Actualizar Sección de Fase
+        const clock = document.getElementById('phase-clock-visual');
+        const warning = document.getElementById('phase-warning');
+        const phaseDesc = document.getElementById('phase-desc');
+
+        // Actualizar el gradiente del reloj
+        clock.style.background = `conic-gradient(#f59e0b ${phase}deg, #e2e8f0 0deg)`;
+        phaseDesc.textContent = `${phase} Grados`;
+
+        // Mostrar advertencia solo en orden 4
+        if (n === 4) {
+            warning.style.display = 'block';
+        } else {
+            warning.style.display = 'none';
+        }
+    }
+
+    // Inicializar en orden 4 al cargar
+    setOrder(4);
+</script>
+
+</body>
+</html>

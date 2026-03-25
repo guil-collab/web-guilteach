@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Laboratorio de Mezcla Armónica — Versión con Rueda Estática</title>
+<style>
+  :root{
+    /* Paleta clara */
+    --bg:#f7f7f5; --panel:#ffffff; --ink:#111213; --muted:#5b616e;
+    --accent:#0f766e; --warn:#b45309; --bad:#b91c1c; --grid:#e8e8e5;
+    --ok:#15803d; --stroke:#d9d9d6;
+  }
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif}
+  .wrap{max-width:1100px;margin:0 auto;padding:24px}
+  h1{font-size:1.8rem;margin:0 0 8px}
+  h2{font-size:1.2rem;margin:24px 0 12px}
+  p{color:var(--muted);line-height:1.55}
+  .grid{display:grid;gap:16px}
+  @media (min-width:900px){ .grid.cols-2{grid-template-columns:1fr 1fr} .grid.cols-3{grid-template-columns:1fr 1fr 1fr}}
+  .card{background:var(--panel);border:1px solid var(--stroke);border-radius:16px;box-shadow:0 1px 8px rgba(0,0,0,.06)}
+  .card>header{padding:14px 16px;border-bottom:1px solid var(--stroke);font-weight:700}
+  .card>section{padding:14px 16px}
+  label{display:block;font-size:.92rem;color:var(--muted);margin:6px 0 4px}
+  select,input[type="number"],button{
+    background:#fafafa;color:var(--ink);border:1px solid var(--stroke);border-radius:10px;
+    padding:10px 12px;font-size:1rem;outline:none; width:100%
+  }
+  button{cursor:pointer}
+  button.primary{background:#e8f6f5;border-color:#bfe7e3}
+  button.good{background:#e9f8ee;border-color:#cfefd8}
+  button.warn{background:#fff4e5;border-color:#fde3bf}
+  button.bad{background:#ffe9e9;border-color:#ffd0d0}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .note-pill{display:inline-block;border:1px solid var(--stroke);border-radius:999px;padding:4px 10px;margin:2px;font-size:.9rem;background:#fafafa}
+  .note-pill.ok{border-color:#b7e4c7;background:#ecfdf5}
+  .bar{height:10px;background:var(--grid);border-radius:999px;overflow:hidden}
+  .bar>span{display:block;height:100%;background:linear-gradient(90deg,#34d399,#22d3ee);width:0%}
+  .badge{display:inline-block;padding:3px 8px;border-radius:999px;border:1px solid var(--stroke);color:#263238;background:#f6f7f9;margin-right:6px}
+  .badge.ok{border-color:#c7eed6;background:#ecfdf5;color:#0f5132}
+  .badge.warn{border-color:#fde68a;background:#fffbeb;color:#78350f}
+  .badge.bad{border-color:#fecaca;background:#fff1f2;color:#7f1d1d}
+  .muted{color:var(--muted)}
+  .floating{position:fixed;right:14px;bottom:14px;background:#ffffff;border:1px dashed var(--stroke);color:#334155;padding:6px 10px;border-radius:10px;font-size:.85rem;opacity:.95}
+  .svg-wrap{background:#fff;border:1px solid var(--stroke);border-radius:16px;overflow:hidden}
+  .legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+  .legend .sw{width:12px;height:12px;border-radius:3px;display:inline-block;margin-right:6px;border:1px solid var(--stroke)}
+  .sw-same{background:#e8fff3;border-color:#c9f5de}
+  .sw-compat{background:#eefae2;border-color:#def1c7}
+  .sw-warn{background:#fff4d6;border-color:#fde8b1}
+  .sw-modal{background:#efe7ff;border-color:#dac7ff}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Laboratorio de Mezcla Armónica — rueda estática</h1>
+  <p>La rueda de Camelot es ahora una <strong>imagen estática</strong> para consulta. El resto de experimentos siguen siendo interactivos.</p>
+
+  <!-- Panel de selección de claves -->
+  <div class="grid cols-2">
+    <div class="card" role="region" aria-labelledby="selA">
+      <header id="selA">Tonalidad A (canción que suena)</header>
+      <section>
+        <label for="tonicA">Tónica</label>
+        <select id="tonicA" aria-describedby="help-tonic"></select>
+        <label for="modeA">Modo</label>
+        <select id="modeA">
+          <option value="major">Mayor</option>
+          <option value="minor">Menor</option>
+        </select>
+        <div class="status" id="infoA" aria-live="polite"></div>
+      </section>
+    </div>
+
+    <div class="card" role="region" aria-labelledby="selB">
+      <header id="selB">Tonalidad B (canción entrante)</header>
+      <section>
+        <label for="tonicB">Tónica</label>
+        <select id="tonicB"></select>
+        <label for="modeB">Modo</label>
+        <select id="modeB">
+          <option value="major">Mayor</option>
+          <option value="minor">Menor</option>
+        </select>
+        <div class="status" id="infoB" aria-live="polite"></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Experimento 1: solapamiento de notas -->
+  <div class="card" role="region" aria-labelledby="exp1">
+    <header id="exp1">Experimento 1 — ¿Cuántas notas comparten?</header>
+    <section>
+      <div class="row">
+        <div><div id="scaleA" aria-live="polite"></div></div>
+        <div><div id="scaleB" aria-live="polite"></div></div>
+      </div>
+      <p class="muted">Solapamiento de notas entre A y B:</p>
+      <div class="bar" aria-label="Barra de solapamiento"><span id="overlapBar"></span></div>
+      <p id="overlapText" aria-live="polite" class="muted"></p>
+    </section>
+  </div>
+
+  <!-- Experimento 2: Rueda Camelot — estática -->
+  <div class="card" role="region" aria-labelledby="exp2">
+    <header id="exp2">Experimento 2 — Rueda de Camelot (imagen estática)</header>
+    <section class="svg-wrap">
+      <svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1000" viewBox="0 0 1000 1000" style="background:#f7f7f5">
+<defs><style><![CDATA[.label{font-family:system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Arial, sans-serif; fill:#0f172a;}.lblB{font-weight:700; font-size:28px;}.lblA{font-weight:700; font-size:28px;}.note{font-weight:400; font-size:18px; opacity:.9}]]></style></defs>
+<text x="500" y="0" text-anchor="middle" class="label" style="font-size:30px; font-weight:800;">Rueda de Camelot</text>
+<path d="M 500.00 40.00 A 460.00 460.00 0 0 1 730.00 101.63 L 680.00 188.23 A 360.00 360.00 0 0 0 500.00 140.00 Z" fill="#dceeff" stroke="#ffffff" stroke-width="2"/>
+<path d="M 730.00 101.63 A 460.00 460.00 0 0 1 898.37 270.00 L 811.77 320.00 A 360.00 360.00 0 0 0 680.00 188.23 Z" fill="#dceeff" stroke="#ffffff" stroke-width="2"/>
+<path d="M 898.37 270.00 A 460.00 460.00 0 0 1 960.00 500.00 L 860.00 500.00 A 360.00 360.00 0 0 0 811.77 320.00 Z" fill="#dceeff" stroke="#ffffff" stroke-width="2"/>
+<path d="M 960.00 500.00 A 460.00 460.00 0 0 1 898.37 730.00 L 811.77 680.00 A 360.00 360.00 0 0 0 860.00 500.00 Z" fill="#dceeff" stroke="#ffffff" stroke-width="2"/>
+<path d="M 898.37 730.00 A 460.00 460.00 0 0 1 730.00 898.37 L 680.00 811.77 A 360.00 360.00 0 0 0 811.77 680.00 Z" fill="#dceeff" stroke="#ffffff" stroke-width="2"/>
+<path d="M 730.00 898.37 A 460.00 460.00 0 0 1 500.00 960.00 L 500.00 860.00 A 360.00 360.00 0 0 0 680.00 811.77 Z" fill="#dceeff" stroke="#ffffff" stroke-width="2"/>
+<path d="M 500.00 960.00 A 460.00 460.00 0 0 1 270.00 898.37 L 320.00 811.77 A 360.00 360.00 0 0 0 500.00 860.00 Z" fill="#dceeff" stroke="#ffffff" stroke-width="2"/>
+<path d="M 270.00 898.37 A 460.00 460.00 0 0 1 101.63 730.00 L 188.23 680.00 A 360.00 360.00 0 0 0 320.00 811.77 Z" fill="#dceeff" stroke="#ffffff" stroke-width="2"/>
+<path d="M 101.63 730.00 A 460.00 460.00 0 0 1 40.00 500.00 L 140.00 500.00 A 360.00 360.00 0 0 0 188.23 680.00 Z" fill="#dceeff" stroke="#ffffff" stroke-width="2"/>
+<path d="M 40.00 500.00 A 460.00 460.00 0 0 1 101.63 270.00 L 188.23 320.00 A 360.00 360.00 0 0 0 140.00 500.00 Z" fill="#dceeff" stroke="#ffffff" stroke-width="2"/>
+<path d="M 101.63 270.00 A 460.00 460.00 0 0 1 270.00 101.63 L 320.00 188.23 A 360.00 360.00 0 0 0 188.23 320.00 Z" fill="#dceeff" stroke="#ffffff" stroke-width="2"/>
+<path d="M 270.00 101.63 A 460.00 460.00 0 0 1 500.00 40.00 L 500.00 140.00 A 360.00 360.00 0 0 0 320.00 188.23 Z" fill="#dceeff" stroke="#ffffff" stroke-width="2"/>
+<path d="M 500.00 200.00 A 300.00 300.00 0 0 1 650.00 240.19 L 600.00 326.79 A 200.00 200.00 0 0 0 500.00 300.00 Z" fill="#ffe7cc" stroke="#ffffff" stroke-width="2"/>
+<path d="M 650.00 240.19 A 300.00 300.00 0 0 1 759.81 350.00 L 673.21 400.00 A 200.00 200.00 0 0 0 600.00 326.79 Z" fill="#ffe7cc" stroke="#ffffff" stroke-width="2"/>
+<path d="M 759.81 350.00 A 300.00 300.00 0 0 1 800.00 500.00 L 700.00 500.00 A 200.00 200.00 0 0 0 673.21 400.00 Z" fill="#ffe7cc" stroke="#ffffff" stroke-width="2"/>
+<path d="M 800.00 500.00 A 300.00 300.00 0 0 1 759.81 650.00 L 673.21 600.00 A 200.00 200.00 0 0 0 700.00 500.00 Z" fill="#ffe7cc" stroke="#ffffff" stroke-width="2"/>
+<path d="M 759.81 650.00 A 300.00 300.00 0 0 1 650.00 759.81 L 600.00 673.21 A 200.00 200.00 0 0 0 673.21 600.00 Z" fill="#ffe7cc" stroke="#ffffff" stroke-width="2"/>
+<path d="M 650.00 759.81 A 300.00 300.00 0 0 1 500.00 800.00 L 500.00 700.00 A 200.00 200.00 0 0 0 600.00 673.21 Z" fill="#ffe7cc" stroke="#ffffff" stroke-width="2"/>
+<path d="M 500.00 800.00 A 300.00 300.00 0 0 1 350.00 759.81 L 400.00 673.21 A 200.00 200.00 0 0 0 500.00 700.00 Z" fill="#ffe7cc" stroke="#ffffff" stroke-width="2"/>
+<path d="M 350.00 759.81 A 300.00 300.00 0 0 1 240.19 650.00 L 326.79 600.00 A 200.00 200.00 0 0 0 400.00 673.21 Z" fill="#ffe7cc" stroke="#ffffff" stroke-width="2"/>
+<path d="M 240.19 650.00 A 300.00 300.00 0 0 1 200.00 500.00 L 300.00 500.00 A 200.00 200.00 0 0 0 326.79 600.00 Z" fill="#ffe7cc" stroke="#ffffff" stroke-width="2"/>
+<path d="M 200.00 500.00 A 300.00 300.00 0 0 1 240.19 350.00 L 326.79 400.00 A 200.00 200.00 0 0 0 300.00 500.00 Z" fill="#ffe7cc" stroke="#ffffff" stroke-width="2"/>
+<path d="M 240.19 350.00 A 300.00 300.00 0 0 1 350.00 240.19 L 400.00 326.79 A 200.00 200.00 0 0 0 326.79 400.00 Z" fill="#ffe7cc" stroke="#ffffff" stroke-width="2"/>
+<path d="M 350.00 240.19 A 300.00 300.00 0 0 1 500.00 200.00 L 500.00 300.00 A 200.00 200.00 0 0 0 400.00 326.79 Z" fill="#ffe7cc" stroke="#ffffff" stroke-width="2"/>
+<text x="604.05" y="111.70" text-anchor="middle" dominant-baseline="middle" class="label lblB">1B</text>
+<text x="611.81" y="82.72" text-anchor="middle" dominant-baseline="middle" class="label note">Si Mayor</text>
+<text x="562.63" y="266.25" text-anchor="middle" dominant-baseline="middle" class="label lblA">1A</text>
+<text x="570.40" y="237.27" text-anchor="middle" dominant-baseline="middle" class="label note">Sol# Menor</text>
+<text x="784.26" y="215.74" text-anchor="middle" dominant-baseline="middle" class="label lblB">2B</text>
+<text x="805.47" y="194.53" text-anchor="middle" dominant-baseline="middle" class="label note">Fa# Mayor</text>
+<text x="671.12" y="328.88" text-anchor="middle" dominant-baseline="middle" class="label lblA">2A</text>
+<text x="692.33" y="307.67" text-anchor="middle" dominant-baseline="middle" class="label note">Re# Menor</text>
+<text x="888.30" y="395.95" text-anchor="middle" dominant-baseline="middle" class="label lblB">3B</text>
+<text x="917.28" y="388.19" text-anchor="middle" dominant-baseline="middle" class="label note">Do# Mayor</text>
+<text x="733.75" y="437.37" text-anchor="middle" dominant-baseline="middle" class="label lblA">3A</text>
+<text x="762.73" y="429.60" text-anchor="middle" dominant-baseline="middle" class="label note">La# Menor</text>
+<text x="888.30" y="604.05" text-anchor="middle" dominant-baseline="middle" class="label lblB">4B</text>
+<text x="917.28" y="611.81" text-anchor="middle" dominant-baseline="middle" class="label note">Sol# Mayor</text>
+<text x="733.75" y="562.63" text-anchor="middle" dominant-baseline="middle" class="label lblA">4A</text>
+<text x="762.73" y="570.40" text-anchor="middle" dominant-baseline="middle" class="label note">Fa Menor</text>
+<text x="784.26" y="784.26" text-anchor="middle" dominant-baseline="middle" class="label lblB">5B</text>
+<text x="805.47" y="805.47" text-anchor="middle" dominant-baseline="middle" class="label note">Re# Mayor</text>
+<text x="671.12" y="671.12" text-anchor="middle" dominant-baseline="middle" class="label lblA">5A</text>
+<text x="692.33" y="692.33" text-anchor="middle" dominant-baseline="middle" class="label note">Do Menor</text>
+<text x="604.05" y="888.30" text-anchor="middle" dominant-baseline="middle" class="label lblB">6B</text>
+<text x="611.81" y="917.28" text-anchor="middle" dominant-baseline="middle" class="label note">La# Mayor</text>
+<text x="562.63" y="733.75" text-anchor="middle" dominant-baseline="middle" class="label lblA">6A</text>
+<text x="570.40" y="762.73" text-anchor="middle" dominant-baseline="middle" class="label note">Sol Menor</text>
+<text x="395.95" y="888.30" text-anchor="middle" dominant-baseline="middle" class="label lblB">7B</text>
+<text x="388.19" y="917.28" text-anchor="middle" dominant-baseline="middle" class="label note">Fa Mayor</text>
+<text x="437.37" y="733.75" text-anchor="middle" dominant-baseline="middle" class="label lblA">7A</text>
+<text x="429.60" y="762.73" text-anchor="middle" dominant-baseline="middle" class="label note">Re Menor</text>
+<text x="215.74" y="784.26" text-anchor="middle" dominant-baseline="middle" class="label lblB">8B</text>
+<text x="194.53" y="805.47" text-anchor="middle" dominant-baseline="middle" class="label note">Do Mayor</text>
+<text x="328.88" y="671.12" text-anchor="middle" dominant-baseline="middle" class="label lblA">8A</text>
+<text x="307.67" y="692.33" text-anchor="middle" dominant-baseline="middle" class="label note">La Menor</text>
+<text x="111.70" y="604.05" text-anchor="middle" dominant-baseline="middle" class="label lblB">9B</text>
+<text x="82.72" y="611.81" text-anchor="middle" dominant-baseline="middle" class="label note">Sol Mayor</text>
+<text x="266.25" y="562.63" text-anchor="middle" dominant-baseline="middle" class="label lblA">9A</text>
+<text x="237.27" y="570.40" text-anchor="middle" dominant-baseline="middle" class="label note">Mi Menor</text>
+<text x="111.70" y="395.95" text-anchor="middle" dominant-baseline="middle" class="label lblB">10B</text>
+<text x="82.72" y="388.19" text-anchor="middle" dominant-baseline="middle" class="label note">Re Mayor</text>
+<text x="266.25" y="437.37" text-anchor="middle" dominant-baseline="middle" class="label lblA">10A</text>
+<text x="237.27" y="429.60" text-anchor="middle" dominant-baseline="middle" class="label note">Si Menor</text>
+<text x="215.74" y="215.74" text-anchor="middle" dominant-baseline="middle" class="label lblB">11B</text>
+<text x="194.53" y="194.53" text-anchor="middle" dominant-baseline="middle" class="label note">La Mayor</text>
+<text x="328.88" y="328.88" text-anchor="middle" dominant-baseline="middle" class="label lblA">11A</text>
+<text x="307.67" y="307.67" text-anchor="middle" dominant-baseline="middle" class="label note">Fa# Menor</text>
+<text x="395.95" y="111.70" text-anchor="middle" dominant-baseline="middle" class="label lblB">12B</text>
+<text x="388.19" y="82.72" text-anchor="middle" dominant-baseline="middle" class="label note">Mi Mayor</text>
+<text x="437.37" y="266.25" text-anchor="middle" dominant-baseline="middle" class="label lblA">12A</text>
+<text x="429.60" y="237.27" text-anchor="middle" dominant-baseline="middle" class="label note">Do# Menor</text>
+<g transform="translate(60,880)"><rect x="0" y="-22" width="380" height="70" rx="10" fill="#ffffff" stroke="#d9d9d6"/><rect x="14" y="0" width="18" height="18" rx="3" fill="#dceeff" stroke="#d9d9d6"/><text x="40" y="10" class="label" style="font-size:16px" dominant-baseline="middle">Mayores (B)</text><rect x="170" y="0" width="18" height="18" rx="3" fill="#ffe7cc" stroke="#d9d9d6"/><text x="196" y="10" class="label" style="font-size:16px" dominant-baseline="middle">Menores (A)</text></g>
+</svg>
+    </section>
+    <section>
+      <div class="legend">
+        <span><span class="sw sw-same"></span>Igual tono</span>
+        <span><span class="sw sw-compat"></span>Relativo / ±1</span>
+        <span><span class="sw sw-warn"></span>Subir un tono (+7)</span>
+        <span><span class="sw sw-modal"></span>Cambio modal (±3 con swap)</span>
+      </div>
+      <p class="muted">Consejo: usa la rueda como mapa visual; abajo verás el código Camelot y la compatibilidad de A y B según lo que selecciones.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
+        <div><label>Tono A (Camelot)</label><div id="camelotA" class="badge ok">—</div></div>
+        <div><label>Tono B (Camelot)</label><div id="camelotB" class="badge ok">—</div></div>
+        <div><label>Compatibilidad rápida</label><div id="quickCompat" class="badge">—</div></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Experimento 3: Escucha guiada -->
+  <div class="card" role="region" aria-labelledby="exp3">
+    <header id="exp3">Experimento 3 — Escucha guiada (centro tonal y disonancia)</header>
+    <section>
+      <p class="muted">Escucha acordes/arpegios y prueba el <em>crossfade</em> para percibir estabilidad.</p>
+      <div class="audio-ctrls">
+        <button id="playA">▶ Acorde A</button>
+        <button id="playB">▶ Acorde B</button>
+        <button id="arpA">▶ Arpegio A</button>
+        <button id="arpB">▶ Arpegio B</button>
+        <label for="xf" class="sr-only">Crossfade A↔B</label>
+        <input id="xf" type="range" min="0" max="1" step="0.01" value="0" aria-label="Crossfade entre A y B (0=A, 1=B)" />
+        <button id="stopAll" class="bad">■ Parar</button>
+      </div>
+      <div id="earTip" class="status" aria-live="polite"></div>
+    </section>
+  </div>
+
+  <!-- Experimento 4: Planificador de transición DJ -->
+  <div class="card" role="region" aria-labelledby="exp4">
+    <header id="exp4">Experimento 4 — Planificador de transición DJ</header>
+    <section>
+      <div class="row">
+        <div>
+          <label for="strategy">Estrategia</label>
+          <select id="strategy">
+            <option value="same">Misma tonalidad</option>
+            <option value="relative">Relativo (Mayor↔Menor)</option>
+            <option value="dominant">Dominante (+1)</option>
+            <option value="subdominant">Subdominante (−1)</option>
+            <option value="boost">Subir un tono (+7)</option>
+            <option value="modal">Cambio modal</option>
+          </select>
+        </div>
+        <div style="display:flex;align-items:end">
+          <button id="applyPlan" class="primary">Aplicar a B</button>
+        </div>
+      </div>
+      <div id="planText" class="status" aria-live="polite"></div>
+    </section>
+  </div>
+
+  <div class="floating" aria-hidden="true">Hecho por GuilTeach</div>
+</div>
+
+<script>
+/* -----------------------
+   Utilidades musicales y cálculo Camelot (sin rueda interactiva)
+------------------------*/
+const NOTE_NAMES = [
+  {pc:0, en:"C", es:"Do"}, {pc:1, en:"C#", es:"Do#"}, {pc:2, en:"D", es:"Re"},
+  {pc:3, en:"D#", es:"Re#"}, {pc:4, en:"E", es:"Mi"}, {pc:5, en:"F", es:"Fa"},
+  {pc:6, en:"F#", es:"Fa#"}, {pc:7, en:"G", es:"Sol"}, {pc:8, en:"G#", es:"Sol#"},
+  {pc:9, en:"A", es:"La"}, {pc:10,en:"A#", es:"La#"}, {pc:11,en:"B", es:"Si"}
+];
+const MAJOR_INTERVALS = [2,2,1,2,2,2,1];
+const MINOR_INTERVALS = [2,1,2,2,1,2,2];
+function buildScale(pcRoot, mode){
+  const ints = mode==="major" ? MAJOR_INTERVALS : MINOR_INTERVALS;
+  const pcs = [pcRoot];
+  let acc = pcRoot;
+  for (let i=0;i<6;i++){ acc = (acc + ints[i])%12; pcs.push(acc); }
+  return pcs;
+}
+function noteName(pc, lang="es"){
+  const n = NOTE_NAMES.find(n=>n.pc===((pc%12)+12)%12);
+  return lang==="es"? n.es : n.en;
+}
+const CAMELOT = {
+  "C major":"8B","G major":"9B","D major":"10B","A major":"11B","E major":"12B","B major":"1B","F# major":"2B","C# major":"3B","G# major":"4B","D# major":"5B","A# major":"6B","F major":"7B",
+  "A minor":"8A","E minor":"9A","B minor":"10A","F# minor":"11A","C# minor":"12A","G# minor":"1A","D# minor":"2A","A# minor":"3A","F minor":"4A","C minor":"5A","G minor":"6A","D minor":"7A"
+};
+function camelotOf(pcRoot, mode){
+  const en = noteName(pcRoot,"en");
+  return CAMELOT[`${en} ${mode==="major"?"major":"minor"}`];
+}
+function intersect(a,b){ return a.filter(x=>b.includes(x)); }
+
+const tonicA = document.getElementById('tonicA');
+const modeA  = document.getElementById('modeA');
+const tonicB = document.getElementById('tonicB');
+const modeB  = document.getElementById('modeB');
+const infoA  = document.getElementById('infoA');
+const infoB  = document.getElementById('infoB');
+const scaleA = document.getElementById('scaleA');
+const scaleB = document.getElementById('scaleB');
+const overlapBar = document.getElementById('overlapBar');
+const overlapText = document.getElementById('overlapText');
+const camelotA = document.getElementById('camelotA');
+const camelotB = document.getElementById('camelotB');
+const quickCompat = document.getElementById('quickCompat');
+const strategy = document.getElementById('strategy');
+const applyPlan = document.getElementById('applyPlan');
+const planText = document.getElementById('planText');
+
+function populateSelects(){
+  NOTE_NAMES.forEach(n=>{
+    const o1 = document.createElement('option');
+    o1.value = n.pc; o1.textContent = `${n.es} (${n.en})`;
+    const o2 = o1.cloneNode(true);
+    tonicA.appendChild(o1); tonicB.appendChild(o2);
+  });
+  tonicA.value = 7; // Sol (G)
+  modeA.value  = "major";
+  tonicB.value = 2; // Re (D)
+  modeB.value  = "major";
+}
+
+function describeKey(pc, mode, labelEl, scaleEl){
+  const pcs = buildScale(pc,mode);
+  const notesEs = pcs.map(p=>noteName(p,"es"));
+  const notesEn = pcs.map(p=>noteName(p,"en"));
+  const camel = camelotOf(pc, mode);
+  labelEl.innerHTML = `
+    <div><strong>${noteName(pc,"es")} ${mode==="major"?"Mayor":"Menor"}</strong>
+    <span class="badge">Camelot ${camel||"—"}</span></div>
+    <div class="muted">Notas (ES): ${notesEs.join(" • ")}</div>
+    <div class="muted">Notes (EN): ${notesEn.join(" • ")}</div>
+  `;
+  scaleEl.innerHTML = `
+    <div class="muted">Escala ${noteName(pc,"es")} ${mode==="major"?"Mayor":"Menor"}</div>
+    <div>${pcs.map(p=>`<span class="note-pill">${noteName(p,"es")}</span>`).join("")}</div>
+  `;
+  return {pcs, camel};
+}
+
+function explainCompatibility(aKey, bKey){
+  const aC = aKey.camel, bC = bKey.camel;
+  let badgeClass="bad", txt="Lejana / Riesgo alto de disonancia";
+  if (aC===bC){ badgeClass="ok"; txt="Misma tonalidad (segurísima)"; }
+  else if (aC.slice(-1)!==bC.slice(-1) && aC[0]===bC[0]){ badgeClass="ok"; txt="Relativo Mayor/menor (muy estable)"; }
+  else if (aC.slice(-1)===bC.slice(-1)){
+    const an= parseInt(aC), bn=parseInt(bC);
+    const diff = Math.min((an-bn+12)%12,(bn-an+12)%12);
+    if (diff===1){ badgeClass="ok"; txt="Dominante/Subdominante (estable)"; }
+    else if (diff===7){ badgeClass="warn"; txt="Subir un tono (+7): subida de energía"; }
+  }
+  quickCompat.className = `badge ${badgeClass==="ok"?"ok":(badgeClass==="warn"?"warn":"bad")}`;
+  quickCompat.textContent = txt;
+}
+
+function render(){
+  const a = describeKey(parseInt(tonicA.value), modeA.value, infoA, scaleA);
+  const b = describeKey(parseInt(tonicB.value), modeB.value, infoB, scaleB);
+
+  camelotA.textContent = a.camel || "—";
+  camelotB.textContent = b.camel || "—";
+
+  const com = intersect(a.pcs,b.pcs);
+  const pct = Math.round(100*com.length/7);
+  overlapBar.style.width = pct+"%";
+  overlapText.textContent = `Comparten ${com.length} de 7 notas (${pct}%).`;
+
+  explainCompatibility(a,b);
+}
+
+['change','input'].forEach(ev=>{
+  [tonicA,modeA,tonicB,modeB].forEach(el=>el.addEventListener(ev,render))
+});
+
+applyPlan.addEventListener('click',()=>{
+  const codeA = camelotA.textContent;
+  let target = null, explain="";
+  if (!/^\d{1,2}[AB]$/.test(codeA)) return;
+  const num = n=>((n-1)%12+12)%12+1;
+  switch(strategy.value){
+    case "same": target = codeA; explain="Misma tonalidad: compartirás las 7 notas; transición muy limpia."; break;
+    case "relative": target = codeA.replace(/A|B/, m=>m==="A"?"B":"A"); explain="Relativo: cambia la cualidad (alegre↔oscura) pero se mantienen las 7 notas."; break;
+    case "dominant": target = `${num(parseInt(codeA)+1)}${codeA.slice(-1)}`; explain="Dominante (+1): armaduras muy próximas; cambio suave."; break;
+    case "subdominant": target = `${num(parseInt(codeA)-1)}${codeA.slice(-1)}`; explain="Subdominante (−1): armaduras muy próximas; cambio suave."; break;
+    case "boost": target = `${num(parseInt(codeA)+7)}${codeA.slice(-1)}`; explain="Subir un tono (+7): salto perceptible que eleva la energía del set."; break;
+    case "modal":
+      const newLet = codeA.endsWith("B")?"A":"B";
+      const move = newLet==="A"? -3 : +3;
+      target = `${num(parseInt(codeA)+move)}${newLet}`;
+      explain="Cambio modal: mayor↔menor manteniendo el centro tonal percibido.";
+      break;
+  }
+  planText.textContent = `Objetivo Camelot: ${target}. ${explain}`;
+});
+
+// init
+populateSelects();
+render();
+</script>
+</body>
+</html>

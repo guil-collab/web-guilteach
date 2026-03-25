@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suma de Señales y Diferencia de Fase</title>
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --text: #1e293b;
+            --wave1: #94a3b8; /* Gris para onda 1 */
+            --wave2: #3b82f6; /* Azul para onda 2 */
+            --waveSumPos: #22c55e; /* Verde para suma positiva */
+            --waveSumNeu: #eab308; /* Amarillo para suma neutra */
+            --waveSumNeg: #ef4444; /* Rojo para cancelación */
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            max-width: 1000px;
+            background: var(--surface);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            width: 100%;
+        }
+
+        h1 { text-align: center; color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
+
+        .dashboard {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            align-items: center;
+            background: #f1f5f9;
+            padding: 15px 20px;
+            border-radius: 8px;
+        }
+
+        .metric {
+            flex: 1;
+            text-align: center;
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .metric-title { font-size: 0.85rem; color: #64748b; font-weight: bold; text-transform: uppercase; }
+        .metric-value { font-size: 1.8rem; font-weight: bold; margin-top: 5px; }
+
+        canvas {
+            width: 100%;
+            height: auto;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: white;
+            margin-bottom: 20px;
+        }
+
+        .controls { display: flex; align-items: center; gap: 15px; }
+        input[type=range] { flex-grow: 1; cursor: pointer; height: 8px; }
+
+        .theory-box {
+            background: white;
+            border: 1px solid #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .theory-box ul { list-style: none; padding: 0; }
+        
+        .theory-box li {
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            background: #f8fafc;
+            border-left: 5px solid #cbd5e1;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+            color: #475569;
+        }
+
+        /* Clases para iluminar el texto dinámicamente */
+        .highlight-green { border-left-color: var(--waveSumPos); background: #dcfce7; color: #166534; font-weight: bold; transform: scale(1.02); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .highlight-yellow { border-left-color: var(--waveSumNeu); background: #fef9c3; color: #854d0e; font-weight: bold; transform: scale(1.02); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .highlight-red { border-left-color: var(--waveSumNeg); background: #fee2e2; color: #991b1b; font-weight: bold; transform: scale(1.02); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Suma de Fuentes: Interferencia y Nivel (dB)</h1>
+
+    <div class="dashboard">
+        <div class="metric">
+            <div class="metric-title">Desfase Relativo</div>
+            <div class="metric-value" id="valPhase" style="color: #3b82f6;">0°</div>
+        </div>
+        <div class="metric">
+            <div class="metric-title">Amplitud de la Suma</div>
+            <div class="metric-value" id="valAmp">x2.00</div>
+        </div>
+        <div class="metric">
+            <div class="metric-title">Aumento de Nivel</div>
+            <div class="metric-value" id="valDb" style="color: var(--waveSumPos);">+6.0 dB</div>
+        </div>
+    </div>
+
+    <canvas id="mainCanvas" width="900" height="350"></canvas>
+
+    <div class="controls">
+        <label for="phaseSlider"><strong>Ajustar Desfase:</strong></label>
+        <input type="range" id="phaseSlider" min="0" max="360" value="0" step="1">
+    </div>
+
+    <div class="theory-box">
+        <h3>Análisis del Gráfico (Suma de dos señales idénticas):</h3>
+        <ul>
+            <li id="rule-0">🟢 Una diferencia de fase relativa de <strong>0°</strong> proporciona una suma máxima de <strong>+6dB</strong> (Interferencia totalmente constructiva).</li>
+            <li id="rule-90">🟢 Una diferencia de fase relativa de <strong>90°</strong> (o 270°) proporciona una suma parcial de <strong>+3dB</strong>.</li>
+            <li id="rule-120">🟡 Una diferencia de fase relativa de <strong>120°</strong> (o 240°) <strong>no proporciona aumento de nivel (0dB)</strong>. Tener dos fuentes desfasadas 120° tiene el mismo resultado en nivel que tener una sola.</li>
+            <li id="rule-180">🔴 A partir de 120° y hasta 180° la suma es negativa, siendo <strong>180° la peor situación</strong>: se produce una <strong>cancelación total (-∞ dB)</strong>.</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('mainCanvas');
+    const ctx = canvas.getContext('2d');
+    const slider = document.getElementById('phaseSlider');
+    
+    const valPhase = document.getElementById('valPhase');
+    const valAmp = document.getElementById('valAmp');
+    const valDb = document.getElementById('valDb');
+
+    // Elementos de la lista para iluminar
+    const rule0 = document.getElementById('rule-0');
+    const rule90 = document.getElementById('rule-90');
+    const rule120 = document.getElementById('rule-120');
+    const rule180 = document.getElementById('rule-180');
+
+    // Configuración visual
+    const waveX = 300, waveY = 175, waveWidth = 550;
+    const circleX = 150, circleY = 175, radius = 100;
+    const baseAmplitude = 50; // Amplitud visual de 1 señal sola
+
+    // Solución para pantallas HD
+    function setupHD() {
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = 900 * dpr;
+        canvas.height = 350 * dpr;
+        ctx.scale(dpr, dpr);
+    }
+    setupHD();
+
+    function updateUI(angleDeg, db) {
+        // Limpiar todas las clases destacadas
+        rule0.className = ''; rule90.className = ''; rule120.className = ''; rule180.className = '';
+
+        // Lógica para iluminar las reglas según el texto del usuario
+        if (angleDeg === 0 || angleDeg === 360) rule0.className = 'highlight-green';
+        else if (angleDeg === 90 || angleDeg === 270) rule90.className = 'highlight-green';
+        else if (angleDeg === 120 || angleDeg === 240) rule120.className = 'highlight-yellow';
+        else if (angleDeg === 180) rule180.className = 'highlight-red';
+        else if (angleDeg > 120 && angleDeg < 240) rule180.className = 'highlight-red'; // Zona de cancelación
+
+        // Color del texto dB
+        if (db > 0.1) valDb.style.color = 'var(--waveSumPos)';
+        else if (db > -0.1 && db < 0.1) valDb.style.color = 'var(--waveSumNeu)';
+        else valDb.style.color = 'var(--waveSumNeg)';
+    }
+
+    function draw(angleDeg) {
+        ctx.clearRect(0, 0, 900, 350);
+        const angleRad = angleDeg * (Math.PI / 180);
+
+        // --- MATEMÁTICAS ---
+        // La suma de sin(x) + sin(x + theta) tiene una amplitud de 2 * cos(theta/2)
+        const ampMultiplier = Math.abs(2 * Math.cos(angleRad / 2));
+        
+        let db = 0;
+        let dbText = "";
+        
+        // Manejo matemático para evitar -Infinito puro en JS de forma abrupta
+        if (angleDeg === 180) {
+            db = -Infinity;
+            dbText = "-∞ dB (Cancelación)";
+        } else {
+            db = 20 * Math.log10(ampMultiplier);
+            dbText = (db > 0 ? "+" : "") + db.toFixed(1) + " dB";
+        }
+
+        // Actualizar textos HTML
+        valPhase.textContent = angleDeg + "°";
+        valAmp.textContent = "x" + ampMultiplier.toFixed(2);
+        valDb.textContent = dbText;
+        updateUI(angleDeg, db);
+
+        // Determinar color de la onda suma
+        let sumColor = 'var(--waveSumPos)';
+        if (ampMultiplier < 0.99) sumColor = 'var(--waveSumNeg)'; // Pierde nivel
+        if (ampMultiplier >= 0.99 && ampMultiplier <= 1.01) sumColor = 'var(--waveSumNeu)'; // Nivel igual (120 grados)
+
+        // --- DIBUJAR CÍRCULO DE FASES (Como en la imagen del usuario) ---
+        // Fondo degradado del círculo (Verde a la derecha, Rojo a la izquierda)
+        const gradient = ctx.createLinearGradient(circleX - radius, circleY, circleX + radius, circleY);
+        gradient.addColorStop(0, '#ef4444'); // Rojo (Cancelación)
+        gradient.addColorStop(0.33, '#f97316'); // Naranja (-dB)
+        gradient.addColorStop(0.5, '#eab308'); // Amarillo (120º / 0dB)
+        gradient.addColorStop(1, '#84cc16'); // Verde (+dB)
+
+        ctx.beginPath();
+        ctx.arc(circleX, circleY, radius, 0, 2 * Math.PI);
+        ctx.fillStyle = gradient;
+        ctx.fill();
+        ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 2; ctx.stroke();
+
+        // Ejes del círculo
+        ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(circleX - radius, circleY); ctx.lineTo(circleX + radius, circleY); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(circleX, circleY - radius); ctx.lineTo(circleX, circleY + radius); ctx.stroke();
+
+        // Vector/Puntero actual
+        const pX = circleX + radius * Math.cos(-angleRad); // Invertimos Y para visualización estándar
+        const pY = circleY - radius * Math.sin(-angleRad);
+        
+        ctx.beginPath(); ctx.moveTo(circleX, circleY); ctx.lineTo(pX, pY);
+        ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 3; ctx.stroke();
+        
+        // Círculo blanco para el valor dB actual en el puntero
+        ctx.fillStyle = 'white';
+        ctx.beginPath(); ctx.roundRect(pX - 20, pY - 12, 40, 24, 4); ctx.fill();
+        ctx.strokeStyle = sumColor; ctx.stroke();
+        ctx.fillStyle = '#1e293b'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(db === -Infinity ? "-∞" : Math.round(db) + "dB", pX, pY + 4);
+
+        // --- DIBUJAR ONDAS EN EL TIEMPO ---
+        // Ejes
+        ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(waveX, waveY); ctx.lineTo(waveX + waveWidth, waveY); ctx.stroke();
+
+        ctx.textAlign = 'left'; ctx.fillStyle = '#64748b';
+        ctx.fillText('Tiempo', waveX + waveWidth + 10, waveY + 4);
+
+        // 1. Onda A (Fija de referencia - Gris punteada)
+        ctx.beginPath(); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2; ctx.setLineDash([5, 5]);
+        for (let i = 0; i <= waveWidth; i++) {
+            let t = (i / waveWidth) * 4 * Math.PI; // 2 ciclos completos
+            let y = waveY - Math.sin(t) * baseAmplitude;
+            i === 0 ? ctx.moveTo(waveX + i, y) : ctx.lineTo(waveX + i, y);
+        }
+        ctx.stroke(); ctx.setLineDash([]);
+
+        // 2. Onda B (Desfasada - Azul fina)
+        ctx.beginPath(); ctx.strokeStyle = 'rgba(59, 130, 246, 0.6)'; ctx.lineWidth = 2;
+        for (let i = 0; i <= waveWidth; i++) {
+            let t = (i / waveWidth) * 4 * Math.PI;
+            let y = waveY - Math.sin(t + angleRad) * baseAmplitude;
+            i === 0 ? ctx.moveTo(waveX + i, y) : ctx.lineTo(waveX + i, y);
+        }
+        ctx.stroke();
+
+        // 3. ONDA SUMA (A + B) (Color dinámico, gruesa)
+        ctx.beginPath(); ctx.strokeStyle = sumColor; ctx.lineWidth = 4;
+        for (let i = 0; i <= waveWidth; i++) {
+            let t = (i / waveWidth) * 4 * Math.PI;
+            // Suma real punto por punto
+            let valA = Math.sin(t);
+            let valB = Math.sin(t + angleRad);
+            let y = waveY - (valA + valB) * baseAmplitude;
+            
+            i === 0 ? ctx.moveTo(waveX + i, y) : ctx.lineTo(waveX + i, y);
+        }
+        ctx.stroke();
+        
+        // Leyenda de Ondas
+        ctx.font = '12px sans-serif';
+        ctx.fillStyle = '#94a3b8'; ctx.fillText('--- Fuente 1 (Fija)', waveX, waveY - baseAmplitude * 2 - 10);
+        ctx.fillStyle = '#3b82f6'; ctx.fillText('— Fuente 2 (Desfasada)', waveX + 120, waveY - baseAmplitude * 2 - 10);
+        ctx.fillStyle = sumColor; ctx.font = 'bold 12px sans-serif'; ctx.fillText('▬ RESULTADO SUMA', waveX + 280, waveY - baseAmplitude * 2 - 10);
+    }
+
+    slider.addEventListener('input', (e) => {
+        draw(parseInt(e.target.value));
+    });
+
+    // Dibujo inicial
+    draw(0);
+</script>
+</body>
+</html>

@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio de Crossovers: Matemáticas del Orden</title>
+    <style>
+        :root {
+            --bg: #050505;
+            --card: #141414;
+            --text: #ffffff;
+            --accent: #00ffff;   
+            --hp-color: #ff00ff; /* Magenta Neón */
+            --lp-color: #00ff00; /* Verde Lima Neón */
+            --sum-color: #ffd700;/* Amarillo Oro */
+            --marker: #ff3d00;   /* Rojo anaranjado */
+            --calc-bg: #1a2324;  /* Fondo caja matemáticas */
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0; padding: 0;
+            line-height: 1.6;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+        /* HEADER */
+        header {
+            text-align: center; padding: 40px 0;
+            border-bottom: 2px solid var(--accent); margin-bottom: 40px;
+        }
+        h1 { margin: 0; font-size: 2.5rem; color: #fff; text-shadow: 0 0 15px var(--accent); }
+        .subtitle { color: #aaa; font-weight: 300; margin-top: 10px; }
+
+        /* LAYOUT */
+        .layout { display: grid; grid-template-columns: 1fr 360px; gap: 25px; }
+        
+        /* SIMULADOR */
+        .sim-box {
+            background: #000; border: 1px solid #333; border-radius: 8px;
+            position: relative; margin-bottom: 15px; padding: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.6);
+        }
+        canvas { display: block; width: 100%; background: #080808; border-radius: 4px; }
+        
+        .label-overlay {
+            position: absolute; top: 10px; right: 10px;
+            background: rgba(0,0,0,0.8); padding: 5px 10px; border-radius: 4px;
+            font-size: 0.8rem; font-weight: bold; color: #ddd; border: 1px solid #444;
+            pointer-events: none;
+        }
+
+        .legend {
+            position: absolute; bottom: 15px; left: 15px;
+            background: rgba(20, 20, 20, 0.9);
+            padding: 8px 12px; border-radius: 6px; border: 1px solid #444;
+            display: flex; gap: 15px; font-size: 0.8rem; font-weight: bold;
+            pointer-events: none;
+        }
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; box-shadow: 0 0 5px currentColor; }
+
+        /* TEORÍA VISUAL */
+        .theory-card {
+            background: var(--card); padding: 20px; border-radius: 8px; margin-bottom: 20px;
+            border-left: 4px solid var(--accent);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        .theory-card h3 { margin-top: 0; color: var(--accent); text-shadow: 0 0 5px rgba(0,255,255,0.4); }
+
+        /* CONTROLES */
+        .controls {
+            background: #1a1a1a; padding: 25px; border-radius: 8px; height: fit-content;
+            border: 1px solid #333;
+        }
+        
+        .control-group { margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 15px; }
+        .control-group:last-child { border: none; }
+        
+        label { display: block; font-weight: bold; margin-bottom: 8px; color: #fff; }
+        
+        select, input[type=range] {
+            width: 100%; padding: 10px; background: #222; border: 1px solid #444;
+            color: #fff; border-radius: 4px; margin-bottom: 5px; cursor: pointer; font-size: 1rem;
+        }
+        input[type=range] { height: 8px; accent-color: var(--accent); }
+
+        .readout { float: right; color: var(--accent); font-family: monospace; font-size: 1.1em; }
+
+        .checkbox-grid { display: flex; flex-direction: column; gap: 8px; }
+        .chk-label { 
+            display: flex; align-items: center; gap: 10px; font-weight: normal; cursor: pointer; font-size: 0.95rem;
+        }
+        .chk-label input { width: auto; margin: 0; cursor: pointer; accent-color: var(--accent); }
+
+        /* --- CAJA DE MATEMÁTICAS (NUEVO) --- */
+        .math-box {
+            background: var(--calc-bg);
+            border: 1px solid var(--accent);
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #ccc;
+            box-shadow: inset 0 0 20px rgba(0,255,255,0.05);
+        }
+        .math-row {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #333;
+        }
+        .math-row:last-child { border: none; margin: 0; padding: 0; }
+        .math-val { color: var(--sum-color); font-weight: bold; font-family: monospace; font-size: 1.1em; }
+        .math-formula { color: #888; font-size: 0.85em; margin-right: 10px; }
+
+        /* DATOS EN VIVO */
+        .live-data {
+            margin-top: 10px; font-size: 0.95rem;
+            background: rgba(255,255,255,0.05); padding: 15px; border-radius: 6px;
+        }
+        .data-row { display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 4px;}
+        .val-hp { color: var(--hp-color); font-weight: bold; }
+        .val-lp { color: var(--lp-color); font-weight: bold; }
+        .val-sum { color: var(--sum-color); font-weight: bold; }
+
+        /* WIKI SECTION */
+        .wiki-section { margin-top: 50px; border-top: 2px solid #333; padding-top: 40px; }
+        .wiki-title { text-align: center; color: #fff; margin-bottom: 30px; font-size: 2rem; }
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; }
+        .wiki-card {
+            background: #1a1a1a; padding: 25px; border-radius: 12px;
+            border-left: 5px solid #555; transition: transform 0.2s;
+        }
+        .wiki-card:hover { transform: translateY(-5px); background: #222; }
+        .wiki-card h3 { margin-top: 0; font-size: 1.4rem; color: var(--accent); }
+        .badge { font-size: 0.8rem; background: #333; padding: 2px 8px; border-radius: 4px; color: #fff; float:right;}
+        .wiki-card p, .wiki-card ul { color: #ccc; font-size: 0.95rem; }
+        .border-but { border-color: #ff9800; }
+        .border-lr { border-color: #00bcd4; }
+        .border-bes { border-color: #9c27b0; }
+
+        @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Laboratorio de Crossovers</h1>
+        <p class="subtitle">Simulador de Filtros y Guía Técnica</p>
+    </header>
+
+    <div class="layout">
+        
+        <div>
+            <div class="sim-box">
+                <div class="label-overlay">MAGNITUD (Frecuencia vs Nivel)</div>
+                <canvas id="magCanvas" height="300"></canvas>
+                <div class="legend">
+                    <div class="legend-item" style="color:var(--lp-color)"><span class="dot" style="background:var(--lp-color)"></span> Pasa Bajos</div>
+                    <div class="legend-item" style="color:var(--hp-color)"><span class="dot" style="background:var(--hp-color)"></span> Pasa Altos</div>
+                    <div class="legend-item" style="color:var(--sum-color)"><span class="dot" style="background:var(--sum-color)"></span> Suma</div>
+                </div>
+            </div>
+
+            <div class="sim-box">
+                <div class="label-overlay">FASE (Grados)</div>
+                <canvas id="phaseCanvas" height="300"></canvas>
+                <div class="legend">
+                    <div class="legend-item" style="color:var(--lp-color)"><span class="dot" style="background:var(--lp-color)"></span> Fase PB</div>
+                    <div class="legend-item" style="color:var(--hp-color)"><span class="dot" style="background:var(--hp-color)"></span> Fase PA</div>
+                </div>
+            </div>
+
+            <div class="theory-card">
+                <h3>📚 Conceptos Clave</h3>
+                <p>
+                    <strong>Frecuencia de Corte (Fc):</strong> El punto donde se cruzan las vías. Observa el círculo rojo en la gráfica superior: indica la atenuación exacta en ese punto.
+                </p>
+                <ul>
+                    <li>Pendiente: La inclinación depende directamente del orden ($n$).</li>
+                    <li>Fase: El giro en el corte también es múltiplo del orden.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="controls">
+            
+            <div class="control-group">
+                <label>Tipo de Filtro (Personalidad)</label>
+                <select id="filterType">
+                    <option value="BUT">Butterworth (BUT)</option>
+                    <option value="LR">Linkwitz-Riley (L-R)</option>
+                    <option value="BES">Bessel (BES)</option>
+                </select>
+                <div style="font-size:0.8rem; color:#aaa; margin-top:5px; font-style:italic;">
+                    L-R cae a -6dB (Suma plana). BUT cae a -3dB.
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Orden (n) del Filtro</label>
+                <input type="range" id="orderRange" min="1" max="8" step="1" value="2">
+                <div style="display:flex; justify-content:space-between; font-size:0.9rem; margin-top:5px;">
+                    <span>1º</span>
+                    <span id="orderVal" style="color:var(--accent); font-weight:bold;">2º Orden</span>
+                    <span>8º</span>
+                </div>
+                
+                <div class="math-box">
+                    <div style="margin-bottom:10px; color:var(--accent); font-weight:bold; border-bottom:1px solid #444; padding-bottom:5px;">
+                        🧮 Cálculo de Propiedades ($n=<span id="mathN">2</span>$)
+                    </div>
+                    
+                    <div class="math-row">
+                        <span>Pendiente Atenuación</span>
+                        <div>
+                            <span class="math-formula">-6dB × n =</span>
+                            <span class="math-val" id="calcSlope">-12dB/oct</span>
+                        </div>
+                    </div>
+                    
+                    <div class="math-row">
+                        <span>Fase en el Corte</span>
+                        <div>
+                            <span class="math-formula">45° × n =</span>
+                            <span class="math-val" id="calcPhase">90°</span>
+                        </div>
+                    </div>
+
+                    <div class="math-row">
+                        <span>Atenuación en Fc</span>
+                        <div>
+                            <span class="math-val" id="calcAtt" style="color:#fff">-3dB</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Frecuencia de Corte (Fc) <span id="freqVal" class="readout">1000 Hz</span></label>
+                <input type="range" id="freqRange" min="100" max="5000" step="50" value="1000">
+            </div>
+
+            <div class="control-group">
+                <label>👁️ Visualización de Vías</label>
+                <div class="checkbox-grid">
+                    <label class="chk-label"><input type="checkbox" id="chkLP" checked> <span style="color:var(--lp-color)">Mostrar Pasa Bajos</span></label>
+                    <label class="chk-label"><input type="checkbox" id="chkHP" checked> <span style="color:var(--hp-color)">Mostrar Pasa Altos</span></label>
+                    <label class="chk-label"><input type="checkbox" id="chkSum" checked> <span style="color:var(--sum-color)">Mostrar Suma Acústica</span></label>
+                </div>
+            </div>
+
+            <div class="control-group" style="border:none;">
+                <label>📊 Estado de Fase en Fc</label>
+                <div class="live-data">
+                    <div class="data-row">
+                        <span style="color:var(--lp-color)">Fase PB:</span>
+                        <strong class="val-lp" id="phaseLP">-90°</strong>
+                    </div>
+                    <div class="data-row">
+                        <span style="color:var(--hp-color)">Fase PA:</span>
+                        <strong class="val-hp" id="phaseHP">+90°</strong>
+                    </div>
+                    <div class="data-row" style="border-top:1px solid #555; padding-top:10px; margin-top:5px;">
+                        <span>Diferencia Total:</span>
+                        <strong class="val-sum" id="phaseDiff">180°</strong>
+                    </div>
+                    <div style="text-align:center; font-size:0.85rem; margin-top:5px; color:#aaa; font-style:italic;" id="phaseStatus">
+                        ⚠️ Cancelación
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="wiki-section">
+        <h2 class="wiki-title">Guía Definitiva de Filtros</h2>
+        <div class="cards-grid">
+            <div class="wiki-card border-but">
+                <h3>Butterworth <span class="badge" style="background:#ff9800; color:#000;">BUT</span></h3>
+                <p>El filtro "máximamente plano". Diseñado para tener la respuesta de frecuencia más lisa posible.</p>
+                <ul>
+                    <li><strong>Corte:</strong> -3 dB en Fc.</li>
+                    <li><strong>Suma:</strong> Pico de +3 dB en el cruce.</li>
+                </ul>
+            </div>
+            <div class="wiki-card border-lr">
+                <h3>Linkwitz-Riley <span class="badge" style="background:#00bcd4; color:#000;">L-R</span></h3>
+                <p>El estándar profesional. Son dos Butterworth en cascada.</p>
+                <ul>
+                    <li><strong>Corte:</strong> -6 dB en Fc.</li>
+                    <li><strong>Suma:</strong> Plana (0 dB).</li>
+                    <li><strong>Nota:</strong> Solo órdenes pares.</li>
+                </ul>
+            </div>
+            <div class="wiki-card border-bes">
+                <h3>Bessel <span class="badge" style="background:#9c27b0; color:#fff;">BES</span></h3>
+                <p>El filtro "musical". Prioriza la respuesta temporal (fase lineal).</p>
+                <ul>
+                    <li><strong>Corte:</strong> -3 dB. Curva muy suave.</li>
+                    <li><strong>Ventaja:</strong> Mejor respuesta a transitorios.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // --- CONFIGURACIÓN ---
+    const magCanvas = document.getElementById('magCanvas');
+    const phaseCanvas = document.getElementById('phaseCanvas');
+    const ctxM = magCanvas.getContext('2d');
+    const ctxP = phaseCanvas.getContext('2d');
+
+    // UI Refs
+    const filterType = document.getElementById('filterType');
+    const orderRange = document.getElementById('orderRange');
+    const freqRange = document.getElementById('freqRange');
+    const chkLP = document.getElementById('chkLP');
+    const chkHP = document.getElementById('chkHP');
+    const chkSum = document.getElementById('chkSum');
+    
+    // Readouts
+    const orderVal = document.getElementById('orderVal');
+    const freqVal = document.getElementById('freqVal');
+    const phaseLP = document.getElementById('phaseLP');
+    const phaseHP = document.getElementById('phaseHP');
+    const phaseDiff = document.getElementById('phaseDiff');
+    const phaseStatus = document.getElementById('phaseStatus');
+
+    // Math Box Refs
+    const mathN = document.getElementById('mathN');
+    const calcSlope = document.getElementById('calcSlope');
+    const calcPhase = document.getElementById('calcPhase');
+    const calcAtt = document.getElementById('calcAtt');
+
+    let state = { type: 'BUT', order: 2, fc: 1000, showLP: true, showHP: true, showSum: true };
+    const COLORS = { lp: '#00ff00', hp: '#ff00ff', sum: '#ffd700', grid: '#333' };
+
+    function resize() {
+        magCanvas.width = magCanvas.parentElement.offsetWidth;
+        magCanvas.height = 300;
+        phaseCanvas.width = phaseCanvas.parentElement.offsetWidth;
+        phaseCanvas.height = 300;
+        draw();
+    }
+    window.addEventListener('resize', resize);
+
+    // --- MATEMÁTICAS ---
+    function getX(f, w) {
+        const minLog = Math.log10(20); const maxLog = Math.log10(20000);
+        return ((Math.log10(f) - minLog) / (maxLog - minLog)) * w;
+    }
+    function getFreq(x, w) {
+        const minLog = Math.log10(20); const maxLog = Math.log10(20000);
+        return Math.pow(10, minLog + (x/w)*(maxLog-minLog));
+    }
+
+    function getMagnitude(f, fc, n, type, isLowPass) {
+        let ratio = isLowPass ? f/fc : fc/f;
+        let power;
+        if (type === 'BUT') power = 1 / (1 + Math.pow(ratio, 2 * n));
+        else if (type === 'LR') {
+            let base = 1 / (1 + Math.pow(ratio, 2 * (n/2)));
+            power = base * base;
+        } else { power = 1 / (1 + Math.pow(ratio, 2 * n)); }
+        return 10 * Math.log10(power);
+    }
+
+    function getPhase(f, fc, n, type, isLowPass) {
+        let ratio = f/fc;
+        let phi;
+        if (isLowPass) phi = -n * Math.atan(ratio) * (180/Math.PI);
+        else phi = n * Math.atan(fc/f) * (180/Math.PI);
+        return phi;
+    }
+
+    // --- DIBUJADO ---
+    function draw() {
+        const w = magCanvas.width; const hM = magCanvas.height; const hP = phaseCanvas.height;
+        ctxM.clearRect(0,0,w,hM); ctxP.clearRect(0,0,w,hP);
+
+        drawGrid(ctxM, w, hM, true); drawGrid(ctxP, w, hP, false);
+
+        const xFc = getX(state.fc, w);
+        [ctxM, ctxP].forEach(ctx => {
+            ctx.strokeStyle='#555'; ctx.setLineDash([4,4]); ctx.lineWidth=1;
+            ctx.beginPath(); ctx.moveTo(xFc,0); ctx.lineTo(xFc,300); ctx.stroke(); ctx.setLineDash([]);
+        });
+
+        ctxM.lineWidth=3; ctxP.lineWidth=3; ctxM.shadowBlur=10; ctxP.shadowBlur=10;
+        let sumReal = new Array(w).fill(0), sumImag = new Array(w).fill(0);
+
+        for(let px=0; px<w; px++) {
+            let f = getFreq(px, w);
+            let magLP = getMagnitude(f, state.fc, state.order, state.type, true);
+            let phLP = getPhase(f, state.fc, state.order, state.type, true);
+            let magHP = getMagnitude(f, state.fc, state.order, state.type, false);
+            let phHP = getPhase(f, state.fc, state.order, state.type, false);
+
+            let linLP = Math.pow(10, magLP/20); let radLP = phLP * (Math.PI/180);
+            let linHP = Math.pow(10, magHP/20); let radHP = phHP * (Math.PI/180);
+            sumReal[px] = (linLP * Math.cos(radLP)) + (linHP * Math.cos(radHP));
+            sumImag[px] = (linLP * Math.sin(radLP)) + (linHP * Math.sin(radHP));
+
+            if(state.showLP) drawPoint(ctxM, ctxP, px, magLP, phLP, hM, hP, COLORS.lp, true);
+            if(state.showHP) drawPoint(ctxM, ctxP, px, magHP, phHP, hM, hP, COLORS.hp, false);
+        }
+        if(state.showLP) finishPath(ctxM, ctxP, COLORS.lp);
+        if(state.showHP) finishPath(ctxM, ctxP, COLORS.hp);
+
+        if(state.showSum) {
+            ctxM.beginPath(); ctxM.strokeStyle=COLORS.sum; ctxM.shadowColor=COLORS.sum;
+            for(let px=0; px<w; px++) {
+                let magTotal = Math.sqrt(sumReal[px]**2 + sumImag[px]**2);
+                let dB = 20 * Math.log10(magTotal);
+                if(px===0) ctxM.moveTo(px, mapYdB(dB, hM)); else ctxM.lineTo(px, mapYdB(dB, hM));
+            }
+            ctxM.stroke();
+        }
+        
+        ctxM.shadowBlur=0; ctxP.shadowBlur=0;
+
+        // Marcador -3dB / -6dB
+        let magAtFc = getMagnitude(state.fc, state.fc, state.order, state.type, true);
+        let yMarker = mapYdB(magAtFc, hM);
+        ctxM.beginPath(); ctxM.arc(xFc, yMarker, 6, 0, 2*Math.PI);
+        ctxM.lineWidth=2; ctxM.strokeStyle='var(--marker)'; ctxM.stroke();
+        ctxM.fillStyle='#fff'; ctxM.font='bold 12px Arial';
+        let markerText = (state.type === 'LR') ? "-6dB" : "-3dB";
+        ctxM.fillText(markerText, xFc+10, yMarker+4);
+    }
+
+    let pathsM = {}, pathsP = {};
+    function drawPoint(ctxM, ctxP, px, mag, ph, hM, hP, color, isLP) {
+        let key = isLP ? 'lp' : 'hp';
+        if(px===0) {
+            pathsM[key] = new Path2D(); pathsP[key] = new Path2D();
+            pathsM[key].moveTo(px, mapYdB(mag, hM)); pathsP[key].moveTo(px, mapYPh(ph, hP));
+        } else {
+            pathsM[key].lineTo(px, mapYdB(mag, hM)); pathsP[key].lineTo(px, mapYPh(ph, hP));
+        }
+    }
+    function finishPath(ctxM, ctxP, color) {
+        ctxM.strokeStyle = color; ctxM.shadowColor = color; ctxP.strokeStyle = color; ctxP.shadowColor = color;
+        let key = (color === COLORS.lp) ? 'lp' : 'hp';
+        ctxM.stroke(pathsM[key]); ctxP.stroke(pathsP[key]);
+    }
+
+    function mapYdB(dB, h) { return ((dB - 10) / (-60 - 10)) * h; }
+    function mapYPh(deg, h) { return ((deg - 270) / (-270 - 270)) * h; }
+
+    function drawGrid(ctx, w, h, isMag) {
+        ctx.strokeStyle='#222'; ctx.lineWidth=1; ctx.font='10px Arial'; ctx.fillStyle='#666'; ctx.shadowBlur=0;
+        [31,63,125,250,500,1000,2000,4000,8000,16000].forEach(f => {
+            let x = getX(f, w);
+            ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke();
+            ctx.textAlign='center'; ctx.fillText(f>=1000?f/1000+'k':f, x, h-5);
+        });
+        ctx.textAlign='left';
+        if(isMag) {
+            for(let db=10; db>=-60; db-=10) {
+                let y = mapYdB(db, h);
+                ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke();
+                ctx.fillText(db, 5, y-2);
+            }
+        } else {
+            for(let deg=180; deg>=-180; deg-=45) {
+                let y = mapYPh(deg, h);
+                ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke();
+                ctx.fillText(deg+"°", 5, y-2);
+            }
+        }
+    }
+
+    function update() {
+        state.type = filterType.value;
+        state.order = parseInt(orderRange.value);
+        state.fc = parseInt(freqRange.value);
+        state.showLP = chkLP.checked;
+        state.showHP = chkHP.checked;
+        state.showSum = chkSum.checked;
+
+        if(state.type==='LR') {
+            if(state.order%2!==0) { state.order++; orderRange.value=state.order; }
+            if(state.order<2) { state.order=2; orderRange.value=2; }
+        }
+
+        orderVal.innerText = state.order + "º Orden";
+        freqVal.innerText = state.fc + " Hz";
+
+        // --- CÁLCULOS MATEMÁTICOS PARA LA CAJA ---
+        mathN.innerText = state.order;
+        
+        let slope = -6 * state.order;
+        calcSlope.innerText = slope + "dB/oct"; // -6 * n
+        
+        let phShift = 45 * state.order;
+        calcPhase.innerText = phShift + "°";    // 45 * n
+        
+        let att = (state.type === 'LR') ? "-6dB" : "-3dB";
+        calcAtt.innerText = att;
+
+        // Data Live
+        phaseLP.innerText = "-" + phShift + "°";
+        phaseHP.innerText = "+" + phShift + "°";
+        
+        let diff = Math.abs(phShift*2);
+        let visualDiff = diff % 360;
+        phaseDiff.innerText = diff + "°";
+
+        if(visualDiff === 180) {
+            phaseStatus.innerText = "⚠️ Desfase 180°: Cancelación Total";
+            phaseStatus.style.color = "#ff5252";
+        } else if (visualDiff === 0) {
+            phaseStatus.innerText = "✅ En Fase: Suma Coherente";
+            phaseStatus.style.color = "#00e676";
+        } else {
+            phaseStatus.innerText = "ℹ️ Desfase de " + visualDiff + "°";
+            phaseStatus.style.color = "#aaa";
+        }
+
+        draw();
+    }
+
+    filterType.addEventListener('change', update);
+    orderRange.addEventListener('input', update);
+    freqRange.addEventListener('input', update);
+    chkLP.addEventListener('change', update);
+    chkHP.addEventListener('change', update);
+    chkSum.addEventListener('change', update);
+
+    resize(); update();
+
+</script>
+</body>
+</html>

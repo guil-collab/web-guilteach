@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suma de Ondas HD</title>
+    <style>
+        :root {
+            --bg: #0d0d0d;
+            --panel: #1a1a1a;
+            --text: #f0f0f0;
+            --wave1: #00e5ff; /* Cyan Neón */
+            --wave2: #ff4081; /* Rosa Neón */
+            --wave3: #76ff03; /* Verde Neón */
+            --sum: #ffeb3b;   /* Amarillo Solar */
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 { margin-bottom: 5px; color: #fff; letter-spacing: 1px; }
+        .subtitle { color: #888; margin-bottom: 30px; font-weight: 300; }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 25px;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        /* --- VISUALIZACIÓN --- */
+        .visuals { display: flex; flex-direction: column; gap: 20px; }
+
+        .canvas-container {
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 2px; /* Pequeño borde */
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+
+        .label {
+            position: absolute; top: 15px; left: 15px;
+            background: rgba(20,20,20,0.8);
+            padding: 4px 10px; border-radius: 4px;
+            font-size: 0.8rem; color: #aaa; pointer-events: none;
+            border-left: 3px solid var(--sum);
+        }
+
+        canvas { 
+            width: 100%; 
+            height: 100%; 
+            display: block; 
+            border-radius: 10px;
+        }
+
+        /* --- CONTROLES --- */
+        .controls-panel {
+            background: var(--panel);
+            padding: 25px;
+            border-radius: 12px;
+            height: fit-content;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        }
+
+        .btn-row { display: flex; gap: 10px; margin-bottom: 25px; }
+
+        button {
+            flex: 1; padding: 12px; font-size: 0.9rem; font-weight: 700;
+            border: none; border-radius: 6px; cursor: pointer;
+            transition: all 0.2s; text-transform: uppercase;
+        }
+        
+        #audioBtn { background: var(--sum); color: #1a1a1a; }
+        #audioBtn:hover { transform: translateY(-2px); box-shadow: 0 0 15px rgba(255,235,59,0.3); }
+        #audioBtn.active { background: #ff5252; color: white; }
+
+        #pauseBtn { background: #333; color: #fff; }
+        #pauseBtn:hover { background: #444; }
+
+        .channel {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            border-left: 4px solid #555;
+        }
+
+        .ch-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+        .ch-title { font-weight: bold; font-size: 1rem; }
+        
+        input[type=range] { width: 100%; margin: 8px 0; accent-color: #fff; cursor: pointer; }
+        
+        .param-row { display: flex; justify-content: space-between; font-size: 0.8rem; color: #bbb; margin-top: 5px; }
+
+        @media (max-width: 900px) { .dashboard { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+    <h1>Laboratorio de Ondas HD</h1>
+    <p class="subtitle">Suma de Frecuencias • Interferencia • Batidos</p>
+
+    <div class="dashboard">
+        <div class="visuals">
+            <div class="canvas-container" style="height: 350px;">
+                <div class="label">OSCILOSCOPIO (Suma de Amplitudes)</div>
+                <canvas id="graphCanvas"></canvas>
+            </div>
+            <div class="canvas-container" style="height: 180px;">
+                <div class="label">VIBRACIÓN ATÓMICA RESULTANTE</div>
+                <canvas id="atomCanvas"></canvas>
+            </div>
+        </div>
+
+        <div class="controls-panel">
+            <div class="btn-row">
+                <button id="audioBtn">🔈 Activar Audio</button>
+                <button id="pauseBtn">⏸ Congelar</button>
+            </div>
+
+            <div class="channel" style="border-color: var(--wave1);">
+                <div class="ch-header">
+                    <span class="ch-title" style="color:var(--wave1)">Onda A</span>
+                    <span id="dispF1" style="font-family:monospace">200 Hz</span>
+                </div>
+                <input type="range" id="freq1" min="100" max="500" value="200">
+                <div class="param-row">
+                    <span>Volumen</span>
+                    <span id="dispA1">50%</span>
+                </div>
+                <input type="range" id="amp1" min="0" max="100" value="50">
+            </div>
+
+            <div class="channel" style="border-color: var(--wave2);">
+                <div class="ch-header">
+                    <span class="ch-title" style="color:var(--wave2)">Onda B</span>
+                    <span id="dispF2" style="font-family:monospace">205 Hz</span>
+                </div>
+                <input type="range" id="freq2" min="100" max="500" value="205">
+                <div class="param-row">
+                    <span>Volumen</span>
+                    <span id="dispA2">50%</span>
+                </div>
+                <input type="range" id="amp2" min="0" max="100" value="50">
+            </div>
+
+            <div class="channel" style="border-color: var(--wave3);">
+                <div class="ch-header">
+                    <span class="ch-title" style="color:var(--wave3)">Onda C</span>
+                    <span id="dispF3" style="font-family:monospace">300 Hz</span>
+                </div>
+                <input type="range" id="freq3" min="100" max="500" value="300">
+                <div class="param-row">
+                    <span>Volumen</span>
+                    <span id="dispA3">0%</span>
+                </div>
+                <input type="range" id="amp3" min="0" max="100" value="0">
+            </div>
+        </div>
+    </div>
+
+<script>
+    // --- 1. CONFIGURACIÓN ALTA DEFINICIÓN (HD) ---
+    const graphCanvas = document.getElementById('graphCanvas');
+    const atomCanvas = document.getElementById('atomCanvas');
+    const gCtx = graphCanvas.getContext('2d');
+    const aCtx = atomCanvas.getContext('2d');
+
+    // Función clave para HD: Ajustar el tamaño del canvas a los píxeles reales del dispositivo
+    function resizeCanvas(canvas) {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        
+        // Ajustamos la resolución interna
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        
+        // Escalamos el contexto para que las coordenadas sigan siendo lógicas
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+        
+        return { w: rect.width, h: rect.height };
+    }
+
+    // --- 2. ESTADO Y AUDIO ---
+    const state = {
+        paused: false,
+        time: 0,
+        f1: 200, a1: 0.5,
+        f2: 205, a2: 0.5,
+        f3: 300, a3: 0.0
+    };
+
+    let audioCtx, osc1, osc2, osc3, g1, g2, g3, master;
+
+    function initAudio() {
+        if(audioCtx) return;
+        const AC = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AC();
+        master = audioCtx.createGain();
+        master.gain.value = 0.3;
+        master.connect(audioCtx.destination);
+
+        const createOsc = (freq, gainVal) => {
+            const o = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            o.type = 'sine';
+            o.frequency.value = freq;
+            g.gain.value = gainVal;
+            o.connect(g).connect(master);
+            o.start();
+            return {o, g};
+        };
+
+        const c1 = createOsc(state.f1, state.a1); osc1=c1.o; g1=c1.g;
+        const c2 = createOsc(state.f2, state.a2); osc2=c2.o; g2=c2.g;
+        const c3 = createOsc(state.f3, state.a3); osc3=c3.o; g3=c3.g;
+    }
+
+    function updateAudio() {
+        if(!audioCtx) return;
+        osc1.frequency.setTargetAtTime(state.f1, audioCtx.currentTime, 0.05);
+        g1.gain.setTargetAtTime(state.a1, audioCtx.currentTime, 0.05);
+        
+        osc2.frequency.setTargetAtTime(state.f2, audioCtx.currentTime, 0.05);
+        g2.gain.setTargetAtTime(state.a2, audioCtx.currentTime, 0.05);
+        
+        osc3.frequency.setTargetAtTime(state.f3, audioCtx.currentTime, 0.05);
+        g3.gain.setTargetAtTime(state.a3, audioCtx.currentTime, 0.05);
+    }
+
+    // --- 3. INPUTS ---
+    const getVal = (id) => parseInt(document.getElementById(id).value);
+    const setTxt = (id, txt) => document.getElementById(id).innerText = txt;
+
+    function updateState() {
+        state.f1 = getVal('freq1'); state.a1 = getVal('amp1')/100;
+        state.f2 = getVal('freq2'); state.a2 = getVal('amp2')/100;
+        state.f3 = getVal('freq3'); state.a3 = getVal('amp3')/100;
+
+        setTxt('dispF1', state.f1+' Hz'); setTxt('dispA1', Math.round(state.a1*100)+'%');
+        setTxt('dispF2', state.f2+' Hz'); setTxt('dispA2', Math.round(state.a2*100)+'%');
+        setTxt('dispF3', state.f3+' Hz'); setTxt('dispA3', Math.round(state.a3*100)+'%');
+        
+        updateAudio();
+    }
+
+    document.querySelectorAll('input').forEach(i => i.addEventListener('input', updateState));
+    
+    document.getElementById('audioBtn').addEventListener('click', function() {
+        if(!audioCtx) {
+            initAudio();
+            this.innerText = "🔇 Silenciar";
+            this.classList.add('active');
+        } else {
+            if(master.gain.value > 0) {
+                master.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+                this.innerText = "🔈 Activar Audio";
+                this.classList.remove('active');
+            } else {
+                master.gain.setTargetAtTime(0.3, audioCtx.currentTime, 0.1);
+                this.innerText = "🔇 Silenciar";
+                this.classList.add('active');
+            }
+        }
+    });
+
+    document.getElementById('pauseBtn').addEventListener('click', function() {
+        state.paused = !state.paused;
+        this.innerText = state.paused ? "▶ Reanudar" : "⏸ Congelar";
+        this.style.background = state.paused ? "#4caf50" : "#333";
+    });
+
+    // --- 4. RENDERIZADO HD ---
+    
+    // Cola para la estela del átomo
+    let trail = [];
+
+    function loop() {
+        if(!state.paused) state.time += 1; // Avance del tiempo
+        
+        // 1. DIBUJAR GRÁFICA DE ONDAS
+        const gDim = resizeCanvas(graphCanvas); // Se ajusta dinámicamente
+        const w = gDim.w;
+        const h = gDim.h;
+        const cy = h / 2;
+
+        gCtx.clearRect(0,0,w,h);
+
+        // Grid (Línea central)
+        gCtx.strokeStyle = '#333'; gCtx.lineWidth = 1;
+        gCtx.beginPath(); gCtx.moveTo(0, cy); gCtx.lineTo(w, cy); gCtx.stroke();
+
+        // Función matemática de onda
+        // ScaleX: Factor para "estirar" la onda horizontalmente y verla bien
+        const scaleX = 0.005; 
+        const waveFn = (x, freq, amp, phase) => {
+            return Math.sin((x * scaleX + phase) * freq * 0.5) * (amp * h * 0.4);
+        };
+
+        // --- DIBUJAR COMPONENTES (Lineas finas) ---
+        const drawComponent = (freq, amp, color) => {
+            if(amp < 0.01) return;
+            gCtx.beginPath();
+            gCtx.strokeStyle = color;
+            gCtx.lineWidth = 1.5; // Un poco más grueso que 1 para antialiasing
+            gCtx.globalAlpha = 0.4; // Transparencia
+            
+            for(let x=0; x<=w; x+=3) { // Paso de 3px para optimizar
+                const y = waveFn(x, freq, amp, state.time * scaleX);
+                x===0 ? gCtx.moveTo(x, cy+y) : gCtx.lineTo(x, cy+y);
+            }
+            gCtx.stroke();
+            gCtx.globalAlpha = 1.0;
+        };
+
+        drawComponent(state.f1, state.a1, '#00e5ff');
+        drawComponent(state.f2, state.a2, '#ff4081');
+        drawComponent(state.f3, state.a3, '#76ff03');
+
+        // --- DIBUJAR SUMA (Línea Brillante) ---
+        gCtx.beginPath();
+        gCtx.strokeStyle = '#ffeb3b';
+        gCtx.lineWidth = 3;
+        // Efecto Glow
+        gCtx.shadowColor = '#ffeb3b';
+        gCtx.shadowBlur = 15;
+        
+        for(let x=0; x<=w; x++) {
+            const t = state.time * scaleX;
+            const y1 = waveFn(x, state.f1, state.a1, t);
+            const y2 = waveFn(x, state.f2, state.a2, t);
+            const y3 = waveFn(x, state.f3, state.a3, t);
+            
+            // Suma
+            let ySum = y1 + y2 + y3;
+            // Limitador suave para que no se salga de pantalla
+            if(ySum > h/2) ySum = h/2;
+            if(ySum < -h/2) ySum = -h/2;
+
+            x===0 ? gCtx.moveTo(x, cy+ySum) : gCtx.lineTo(x, cy+ySum);
+        }
+        gCtx.stroke();
+        gCtx.shadowBlur = 0; // Reset glow
+
+        // 2. DIBUJAR ÁTOMO
+        const aDim = resizeCanvas(atomCanvas);
+        const aw = aDim.w;
+        const ah = aDim.h;
+        const acx = aw/2;
+        const acy = ah/2;
+
+        aCtx.clearRect(0,0,aw,ah);
+
+        // Calcular desplazamiento actual (en x=0 de la gráfica)
+        // Usamos la misma lógica que la gráfica pero en x=0
+        const tVal = state.time * scaleX;
+        const val1 = Math.sin(tVal * state.f1 * 0.5) * state.a1;
+        const val2 = Math.sin(tVal * state.f2 * 0.5) * state.a2;
+        const val3 = Math.sin(tVal * state.f3 * 0.5) * state.a3;
+        
+        const totalDisplacement = (val1 + val2 + val3) * (aw * 0.4); // Escala visual
+
+        // Estela
+        if(!state.paused) {
+            trail.push({x: acx + totalDisplacement, alpha: 1.0});
+            if(trail.length > 30) trail.shift();
+        }
+
+        // Dibujar estela
+        trail.forEach(pt => {
+            aCtx.beginPath();
+            aCtx.arc(pt.x, acy, 4, 0, Math.PI*2);
+            aCtx.fillStyle = `rgba(255, 235, 59, ${pt.alpha * 0.4})`;
+            aCtx.fill();
+            if(!state.paused) pt.alpha -= 0.04;
+        });
+
+        // Eje guía
+        aCtx.beginPath(); aCtx.strokeStyle='#333'; aCtx.moveTo(0, acy); aCtx.lineTo(aw, acy); aCtx.stroke();
+
+        // Átomo
+        const atomX = acx + totalDisplacement;
+        aCtx.beginPath();
+        aCtx.arc(atomX, acy, 14, 0, Math.PI*2);
+        aCtx.fillStyle = '#ffeb3b';
+        aCtx.shadowColor = '#ffeb3b'; aCtx.shadowBlur = 20;
+        aCtx.fill();
+        aCtx.shadowBlur = 0;
+        aCtx.strokeStyle = '#fff'; aCtx.lineWidth = 2; aCtx.stroke();
+
+        requestAnimationFrame(loop);
+    }
+
+    loop();
+
+</script>
+</body>
+</html>

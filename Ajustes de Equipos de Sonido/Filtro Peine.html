@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>El Secreto: Delay es EQ</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #1a1a1a; color: #eee; text-align: center; padding: 20px; }
+        h1 { color: #00d2ff; }
+        canvas { background: #000; border: 2px solid #444; border-radius: 8px; box-shadow: 0 0 20px rgba(0,210,255,0.1); }
+        .controls { background: #333; padding: 20px; border-radius: 10px; display: inline-block; max-width: 700px; text-align: left; }
+        button { background: #00d2ff; color: #000; font-weight: bold; border: none; padding: 12px 24px; font-size: 16px; cursor: pointer; border-radius: 5px; margin-bottom: 20px; width: 100%; }
+        button:hover { background: #33e0ff; }
+        .slider-container { margin-bottom: 20px; position: relative; }
+        input[type=range] { width: 100%; cursor: pointer; }
+        .readout { float: right; font-family: monospace; color: #00d2ff; }
+        .explanation { font-size: 0.9em; color: #bbb; line-height: 1.5; background: #252525; padding: 15px; border-radius: 5px; margin-top: 10px;}
+        .highlight { color: #ffeb3b; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h1>Demostración: Un Delay ES un Filtro</h1>
+    <p>Usa Ruido Blanco (todas las frecuencias) y súmale una copia retrasada de sí mismo.</p>
+    
+    <div class="controls">
+        <button id="btnStart">ENCENDER MOTOR DE AUDIO</button>
+
+        <div class="slider-container">
+            <label>Tiempo de Retraso (Delay):</label> <span id="delayVal" class="readout">0.50 ms</span>
+            <input type="range" id="delaySlider" min="0.1" max="10" step="0.1" value="0.5">
+            <p class="explanation">
+                Estás escuchando la señal original + la señal retrasada <span id="textMs" class="highlight">0.5 ms</span>.
+                <br>Fíjate en el gráfico: ¡El retraso ha creado agujeros (filtros) en el espectro!
+                <br>A esto se le llama <strong>Comb Filter (Filtro Peine)</strong>.
+            </p>
+        </div>
+
+        <div class="slider-container">
+            <label>Mix (Dry / Wet):</label> <span id="mixVal" class="readout">50%</span>
+            <input type="range" id="mixSlider" min="0" max="1" step="0.01" value="0.5">
+            <p class="explanation">
+                Al 50% (máxima suma), la cancelación es total en ciertas frecuencias.
+            </p>
+        </div>
+    </div>
+
+    <canvas id="analyzerCanvas" width="800" height="300"></canvas>
+
+    <script>
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let noiseBuffer;
+        let source;
+        let delayNode;
+        let gainNode; // Dry
+        let delayGain; // Wet
+        let masterGain;
+        let analyser;
+        let isRunning = false;
+
+        const canvas = document.getElementById('analyzerCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // 1. Crear Ruido Blanco (Buffer de 2 segundos)
+        // Usamos ruido porque contiene TODAS las frecuencias, así es fácil ver qué falta.
+        function createWhiteNoise() {
+            const bufferSize = audioCtx.sampleRate * 2; 
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+            return buffer;
+        }
+
+        async function init() {
+            if (audioCtx.state === 'suspended') await audioCtx.resume();
+            
+            if (isRunning) {
+                source.stop();
+                isRunning = false;
+                document.getElementById('btnStart').innerText = "ENCENDER MOTOR DE AUDIO";
+                return;
+            }
+
+            noiseBuffer = createWhiteNoise();
+            
+            // Nodos
+            source = audioCtx.createBufferSource();
+            source.buffer = noiseBuffer;
+            source.loop = true;
+
+            delayNode = audioCtx.createDelay(1.0); // Max 1 seg
+            gainNode = audioCtx.createGain();      // Dry Gain
+            delayGain = audioCtx.createGain();     // Wet Gain
+            masterGain = audioCtx.createGain();
+            analyser = audioCtx.createAnalyser();
+
+            // Configuración inicial
+            masterGain.gain.value = 0.5; // Bajar volumen general para no saturar
+            updateDelay();
+            updateMix();
+
+            // --- RUTEO (La magia ocurre aquí) ---
+            // Ruta 1: Directa (Dry)
+            source.connect(gainNode);
+            gainNode.connect(analyser);
+
+            // Ruta 2: Retrasada (Wet)
+            source.connect(delayNode);
+            delayNode.connect(delayGain);
+            delayGain.connect(analyser);
+
+            // Salida
+            analyser.connect(masterGain);
+            masterGain.connect(audioCtx.destination);
+
+            source.start();
+            isRunning = true;
+            document.getElementById('btnStart').innerText = "APAGAR";
+            drawSpectrum();
+        }
+
+        function updateDelay() {
+            const ms = parseFloat(document.getElementById('delaySlider').value);
+            document.getElementById('delayVal').innerText = ms.toFixed(2) + " ms";
+            document.getElementById('textMs').innerText = ms.toFixed(2) + " ms";
+            
+            // Convertir ms a segundos para la API
+            if(delayNode) delayNode.delayTime.value = ms / 1000;
+        }
+
+        function updateMix() {
+            const mix = parseFloat(document.getElementById('mixSlider').value);
+            document.getElementById('mixVal').innerText = Math.round(mix * 100) + "%";
+            
+            // Crossfade simple
+            if(gainNode) gainNode.gain.value = 1 - mix; // Dry baja
+            if(delayGain) delayGain.gain.value = mix;   // Wet sube
+        }
+
+        // Visualizador de Espectro (Frecuencia)
+        function drawSpectrum() {
+            if (!isRunning) return;
+            requestAnimationFrame(drawSpectrum);
+
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            analyser.getByteFrequencyData(dataArray);
+
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const barWidth = (canvas.width / bufferLength) * 2.5;
+            let barHeight;
+            let x = 0;
+
+            for(let i = 0; i < bufferLength; i++) {
+                barHeight = dataArray[i];
+
+                // Color dinámico basado en altura
+                ctx.fillStyle = 'rgb(' + (barHeight + 50) + ',50,200)';
+                
+                // Dibujar barra (Espectro)
+                // Invertimos Y porque canvas dibuja de arriba a abajo
+                ctx.fillRect(x, canvas.height - barHeight * 1.2, barWidth, barHeight * 1.2);
+
+                x += barWidth + 1;
+            }
+        }
+
+        // Listeners
+        document.getElementById('btnStart').addEventListener('click', init);
+        document.getElementById('delaySlider').addEventListener('input', updateDelay);
+        document.getElementById('mixSlider').addEventListener('input', updateMix);
+
+    </script>
+</body>
+</html>

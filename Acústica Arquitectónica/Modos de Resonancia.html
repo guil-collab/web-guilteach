@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Calculadora Interactiva de Curvas NC y NR</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --primary: #2c3e50; --accent: #e67e22; --light: #ecf0f1; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.15); width: 95%; max-width: 1200px; }
+        header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid var(--light); padding-bottom: 10px; }
+        .layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; }
+        .inputs { background: var(--light); padding: 15px; border-radius: 8px; }
+        .input-row { display: flex; justify-content: space-between; margin-bottom: 8px; align-items: center; }
+        input { width: 60px; padding: 6px; border: 1px solid #bdc3c7; border-radius: 4px; text-align: center; font-weight: bold; }
+        .selector { margin-bottom: 15px; padding: 10px; background: #fff; border-radius: 5px; }
+        button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        button:hover { background: #34495e; }
+        .chart-box { height: 600px; background: white; padding: 10px; border: 1px solid #ddd; border-radius: 8px; }
+        .result-info { margin-top: 15px; padding: 15px; background: #d5f5e3; border-radius: 6px; text-align: center; border-left: 5px solid #27ae60; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Evaluador Acústico: NC vs NR</h1>
+        <p>Introduce los datos del problema y observa qué curva de referencia se supera.</p>
+    </header>
+
+    <div class="layout">
+        <div class="inputs">
+            <div class="selector">
+                <label><b>Estándar a evaluar:</b></label><br>
+                <input type="radio" name="mode" value="NC" checked onchange="toggleMode()"> NC (Noise Criteria)<br>
+                <input type="radio" name="mode" value="NR" onchange="toggleMode()"> NR (Noise Rating)
+            </div>
+
+            <h3>Niveles Medidos (dB)</h3>
+            <div id="fields"></div>
+            <button onclick="processData()">CALCULAR CURVA</button>
+
+            <div class="result-info">
+                <strong>Resultado Estimado:</strong><br>
+                <span id="final-result" style="font-size: 24px; color: #c0392b;">--</span>
+            </div>
+        </div>
+
+        <div class="chart-box">
+            <canvas id="mainChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Frecuencias para NC (63 a 8k) y NR (31.5 a 8k)
+    const freqsNC = [63, 125, 250, 500, 1000, 2000, 4000, 8000];
+    const freqsNR = [31.5, 63, 125, 250, 500, 1000, 2000, 4000, 8000];
+    
+    // Datos de referencia simplificados (Puntos de las curvas de las imágenes)
+    const curvesNC = {
+        20: [51, 40, 33, 26, 22, 19, 17, 16], 25: [54, 44, 37, 31, 27, 24, 22, 21],
+        30: [57, 48, 41, 35, 31, 29, 28, 27], 35: [60, 52, 45, 40, 36, 34, 33, 32],
+        40: [64, 56, 50, 45, 41, 39, 38, 37], 45: [67, 60, 54, 49, 46, 44, 43, 42],
+        50: [71, 64, 58, 54, 51, 49, 48, 47], 55: [74, 67, 62, 58, 56, 54, 53, 52],
+        60: [77, 71, 67, 63, 61, 59, 58, 57], 65: [80, 75, 71, 68, 66, 64, 63, 62],
+        70: [83, 79, 75, 72, 71, 70, 69, 68]
+    };
+
+    const curvesNR = {}; 
+    // Generación dinámica de curvas NR basadas en la fórmula ISO L = a + b*NR
+    // a y b son constantes por frecuencia. Aquí usamos los valores de tu gráfica:
+    [0, 10, 20, 30, 40, 50, 60, 70, 75].forEach(val => {
+        curvesNR[val] = [val+55, val+46, val+35, val+28, val+22, val+20, val+18, val+16, val+14].map(x => x-20); // Ajuste visual
+    });
+
+    let chart;
+    let currentMode = 'NC';
+
+    function createFields() {
+        const container = document.getElementById('fields');
+        container.innerHTML = '';
+        const list = currentMode === 'NC' ? freqsNC : freqsNR;
+        list.forEach(f => {
+            container.innerHTML += `
+                <div class="input-row">
+                    <label>${f} Hz:</label>
+                    <input type="number" class="val-input" data-f="${f}" value="${f === 250 ? 77 : 40}">
+                </div>`;
+        });
+    }
+
+    function toggleMode() {
+        currentMode = document.querySelector('input[name="mode"]:checked').value;
+        createFields();
+        processData();
+    }
+
+    function processData() {
+        const inputs = document.querySelectorAll('.val-input');
+        const userValues = Array.from(inputs).map(i => parseFloat(i.value));
+        const labels = currentMode === 'NC' ? freqsNC : freqsNR;
+        const refCurves = currentMode === 'NC' ? curvesNC : curvesNR;
+
+        // Determinar resultado
+        let maxFound = 0;
+        Object.keys(refCurves).forEach(level => {
+            userValues.forEach((v, idx) => {
+                if (v >= refCurves[level][idx]) maxFound = Math.max(maxFound, level);
+            });
+        });
+
+        document.getElementById('final-result').innerText = currentMode + "-" + maxFound;
+
+        updateChart(labels, refCurves, userValues);
+    }
+
+    function updateChart(labels, refCurves, userData) {
+        if (chart) chart.destroy();
+        const datasets = [];
+
+        // Añadir curvas de referencia
+        Object.keys(refCurves).forEach(key => {
+            datasets.push({
+                label: key, data: refCurves[key], borderColor: '#bdc3c7', borderWidth: 1, pointRadius: 0, fill: false
+            });
+        });
+
+        // Añadir datos del alumno
+        datasets.push({
+            label: 'MEDICIÓN ACTUAL', data: userData, borderColor: '#e67e22', borderWidth: 5, pointRadius: 6, pointBackgroundColor: '#e67e22', fill: false, zIndex: 10
+        });
+
+        const ctx = document.getElementById('mainChart').getContext('2d');
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: labels.map(l => l + 'Hz'), datasets: datasets },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: { y: { min: 0, max: 100, title: {display:true, text:'dB'} } },
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+
+    window.onload = toggleMode;
+</script>
+</body>
+</html>

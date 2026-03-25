@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Laboratorio: El Peine de Frecuencias (Alta Resolución)</title>
+    <style>
+        body { font-family: 'Segoe UI', monospace, sans-serif; background: #0f0f0f; color: #e0e0e0; margin: 0; padding: 20px; overflow-y: hidden; }
+        
+        /* Layout de pantalla completa */
+        .main-layout { display: flex; flex-direction: column; height: 95vh; gap: 15px; }
+
+        /* HEADER */
+        header { text-align: center; height: 60px; }
+        h1 { margin: 0; color: #00e676; letter-spacing: 2px; font-size: 1.5rem; }
+        .subtitle { color: #888; font-size: 0.9rem; }
+
+        /* SECCIÓN SUPERIOR: GRÁFICO Y CONTROLES */
+        .top-section {
+            display: flex;
+            gap: 20px;
+            height: 35%; /* Ocupa el 35% de la pantalla */
+        }
+
+        .panel-graph { flex: 2; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 10px; position: relative; }
+        .panel-controls { flex: 1; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+
+        canvas { width: 100%; height: 100%; display: block; }
+        
+        /* Sliders */
+        input[type=range] { width: 100%; accent-color: #00e676; cursor: pointer; height: 8px; margin: 15px 0; }
+        .big-readout { font-size: 2.5rem; color: #00e676; font-weight: bold; font-family: monospace; }
+
+        /* SECCIÓN INFERIOR: TABLA MASIVA */
+        .bottom-section {
+            flex: 1; /* Ocupa el resto de la pantalla */
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            overflow: hidden; /* Para contener el scroll */
+            display: flex;
+            flex-direction: column;
+        }
+
+        .table-header { padding: 10px 20px; background: #252525; border-bottom: 2px solid #444; font-weight: bold; color: #aaa; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 2fr; }
+        
+        .scroll-container {
+            flex: 1;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        /* La Tabla en sí */
+        .data-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr 2fr;
+            padding: 4px 20px;
+            border-bottom: 1px solid #222;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            align-items: center;
+        }
+        .data-row:hover { background: #333; }
+
+        /* Visualizador de Fase en la tabla */
+        .phase-meter {
+            height: 10px;
+            background: #333;
+            border-radius: 5px;
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+        }
+        .phase-fill { height: 100%; transition: width 0.1s; }
+
+        /* Colores de estado */
+        .row-cancel { color: #ff5252; background: rgba(255, 82, 82, 0.05); }
+        .row-boost { color: #00e676; background: rgba(0, 230, 118, 0.05); }
+        .fill-red { background: #ff5252; }
+        .fill-green { background: #00e676; }
+        .fill-yellow { background: #ffca28; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 10px; }
+        ::-webkit-scrollbar-track { background: #111; }
+        ::-webkit-scrollbar-thumb { background: #444; border-radius: 5px; }
+
+    </style>
+</head>
+<body>
+
+<div class="main-layout">
+    <header>
+        <h1>🔬 Scanner de Frecuencias</h1>
+        <div class="subtitle">Análisis de Fase de Alta Densidad (20Hz - 20kHz)</div>
+    </header>
+
+    <div class="top-section">
+        <div class="panel-graph">
+            <canvas id="combCanvas" width="800" height="300"></canvas>
+            <div style="position: absolute; top:10px; right:10px; color: #666; font-size: 0.8rem;">Visualización de Amplitud</div>
+        </div>
+        <div class="panel-controls">
+            <label>DELAY (Retraso Temporal)</label>
+            <span id="delayDisplay" class="big-readout">0.50 ms</span>
+            <input type="range" id="delaySlider" min="0" max="5" step="0.01" value="0.5">
+            <p style="font-size: 0.8rem; color: #888; text-align: center;">
+                Mueve el slider y observa cómo el patrón de "rayas" se mueve en la tabla inferior.
+            </p>
+        </div>
+    </div>
+
+    <div class="bottom-section">
+        <div class="table-header">
+            <div>Frecuencia</div>
+            <div>Periodo (T)</div>
+            <div>Vueltas (Ciclos)</div>
+            <div>Fase (°)</div>
+            <div>Estado / Medidor</div>
+        </div>
+        <div class="scroll-container" id="scrollContainer">
+            </div>
+    </div>
+</div>
+
+<script>
+    // --- GENERACIÓN DE FRECUENCIAS ---
+    // Vamos a crear un array masivo para llenar la tabla
+    const frequencies = [];
+    
+    // 1. Graves (Alta resolución: cada 10Hz)
+    for(let f=20; f<200; f+=10) frequencies.push(f);
+    // 2. Medios (Resolución media: cada 20Hz) - Para ver bien el patrón
+    for(let f=200; f<2000; f+=20) frequencies.push(f);
+    // 3. Agudos (Resolución estándar: cada 100Hz)
+    for(let f=2000; f<=20000; f+=100) frequencies.push(f);
+
+    const container = document.getElementById('scrollContainer');
+    const slider = document.getElementById('delaySlider');
+    const display = document.getElementById('delayDisplay');
+    const canvas = document.getElementById('combCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Elementos DOM cacheados para optimizar rendimiento
+    let rowElements = []; 
+
+    // --- INICIALIZACIÓN DOM ---
+    // Creamos las filas UNA SOLA VEZ para no matar al navegador recreándolas
+    function initTable() {
+        container.innerHTML = '';
+        frequencies.forEach((freq, index) => {
+            const div = document.createElement('div');
+            div.className = 'data-row';
+            
+            // Estructura interna
+            div.innerHTML = `
+                <div>${freq} Hz</div>
+                <div id="p-${index}">--</div>
+                <div id="c-${index}">--</div>
+                <div id="deg-${index}">--</div>
+                <div class="phase-meter">
+                    <div id="bar-${index}" class="phase-fill" style="width: 100%;"></div>
+                </div>
+            `;
+            container.appendChild(div);
+
+            // Guardamos referencias para actualización rápida
+            rowElements.push({
+                freq: freq,
+                el: div,
+                p: div.querySelector(`#p-${index}`),
+                c: div.querySelector(`#c-${index}`),
+                deg: div.querySelector(`#deg-${index}`),
+                bar: div.querySelector(`#bar-${index}`)
+            });
+        });
+    }
+
+    // --- BUCLE PRINCIPAL ---
+    function update() {
+        const delayMs = parseFloat(slider.value);
+        const delaySec = delayMs / 1000;
+        display.innerText = delayMs.toFixed(2) + " ms";
+
+        drawGraph(delaySec);
+        updateTableValues(delaySec, delayMs);
+        
+        // Loop de animación
+        requestAnimationFrame(update); // Lo hacemos fluido, aunque gasta CPU
+    }
+
+    // --- DIBUJO DEL CANVAS (Igual que antes pero ajustado) ---
+    function drawGraph(delaySec) {
+        // Ajustar tamaño real del canvas
+        canvas.width = canvas.parentElement.clientWidth;
+        canvas.height = canvas.parentElement.clientHeight;
+        const W = canvas.width;
+        const H = canvas.height;
+
+        ctx.clearRect(0, 0, W, H);
+        
+        // Grid
+        ctx.strokeStyle = "#333";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for(let i=1000; i<20000; i+=1000) {
+            let x = (i/20000) * W;
+            ctx.moveTo(x, 0); ctx.lineTo(x, H);
+        }
+        ctx.stroke();
+
+        if(delaySec === 0) {
+            ctx.strokeStyle = "#00e676";
+            ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.moveTo(0, 10); ctx.lineTo(W, 10); ctx.stroke();
+            return;
+        }
+
+        ctx.strokeStyle = "#00e676";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        
+        for(let x=0; x<W; x+=2) { // Saltamos de 2 en 2 pixeles para velocidad
+            const freq = (x/W) * 20000;
+            const amp = Math.abs(Math.cos(Math.PI * freq * delaySec));
+            const y = H - (amp * (H-20)) - 10;
+            if(x===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+        }
+        ctx.stroke();
+    }
+
+    // --- CÁLCULOS DE TABLA ---
+    function updateTableValues(delaySec, delayMs) {
+        // Recorremos el array pre-generado
+        for(let i=0; i < rowElements.length; i++) {
+            const item = rowElements[i];
+            const freq = item.freq;
+            
+            // Físicas
+            const periodMs = 1000 / freq;
+            const cycles = delayMs / periodMs;
+            
+            // Fase
+            const degTotal = cycles * 360;
+            const degWrapped = degTotal % 360;
+            
+            // Amplitud resultante (0 a 1) para determinar color
+            // Usamos coseno: 1 = Suma, 0 = Cancelación
+            const amp = Math.abs(Math.cos(Math.PI * freq * delaySec));
+
+            // Actualizar Texto (Solo si es visible para optimizar? Nah, son pocos textos)
+            // item.p.innerText = periodMs.toFixed(3); // A veces es demasiada info
+            item.p.innerText = periodMs.toFixed(2) + " ms";
+            item.c.innerText = cycles.toFixed(2);
+            item.deg.innerText = degWrapped.toFixed(0) + "°";
+
+            // Visualización y Colores
+            let barColor = "fill-yellow";
+            let rowClass = "";
+            let percent = amp * 100;
+
+            if (amp < 0.2) { // Cancelación Profunda
+                barColor = "fill-red";
+                rowClass = "row-cancel";
+                item.deg.innerText = "🚫 " + degWrapped.toFixed(0) + "°";
+            } else if (amp > 0.9) { // Suma casi perfecta
+                barColor = "fill-green";
+                rowClass = "row-boost";
+            }
+
+            // Aplicar estilos
+            item.el.className = "data-row " + rowClass;
+            item.bar.className = "phase-fill " + barColor;
+            item.bar.style.width = percent + "%";
+        }
+    }
+
+    // Arrancar
+    initTable();
+    // Usamos el evento input para actualizar solo cuando se mueve, 
+    // pero para suavidad visual usamos requestAnimationFrame en el evento
+    slider.addEventListener('input', () => {
+        // La función update ya se llama sola con requestAnimationFrame? 
+        // No, mejor llamarla en el evento para ahorrar batería si no se mueve.
+        // Pero para este demo, un loop constante queda más "Pro".
+    });
+
+    // Iniciar loop
+    update();
+
+</script>
+</body>
+</html>

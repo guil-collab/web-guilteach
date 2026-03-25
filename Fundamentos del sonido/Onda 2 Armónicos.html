@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Superposición de Ondas: Laboratorio Virtual</title>
+    <style>
+        :root {
+            --bg: #121212;
+            --panel: #1e1e1e;
+            --text: #e0e0e0;
+            --wave1: #00bcd4; /* Cyan */
+            --wave2: #e91e63; /* Magenta */
+            --sum: #ffeb3b;   /* Amarillo Brillante */
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 { margin-bottom: 5px; color: #fff; }
+        .subtitle { color: #888; font-style: italic; margin-bottom: 25px; }
+
+        /* Contenedor principal */
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        /* Área de visualización */
+        .visuals {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .canvas-card {
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 10px;
+            position: relative;
+        }
+
+        .canvas-label {
+            position: absolute;
+            top: 10px;
+            left: 15px;
+            background: rgba(0,0,0,0.7);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            color: #aaa;
+            pointer-events: none;
+        }
+
+        canvas {
+            width: 100%;
+            display: block;
+            border-radius: 4px;
+        }
+
+        /* Panel de Controles */
+        .controls-panel {
+            background: var(--panel);
+            padding: 20px;
+            border-radius: 8px;
+            height: fit-content;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .control-group {
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #333;
+        }
+        .control-group:last-child { border-bottom: none; }
+
+        h3 { margin-top: 0; font-size: 1.1em; display: flex; align-items: center; gap: 10px; }
+        
+        .indicator { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+
+        label { display: block; margin-top: 10px; font-size: 0.9em; color: #bbb; }
+        
+        input[type=range] {
+            width: 100%;
+            margin: 5px 0;
+            cursor: pointer;
+            accent-color: #fff;
+        }
+
+        .value-display { float: right; color: #fff; font-weight: bold; }
+
+        /* Botón de pausa */
+        .main-action {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.1em;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            background: var(--sum);
+            color: #000;
+            transition: transform 0.1s;
+        }
+        .main-action:hover { transform: scale(1.02); box-shadow: 0 0 15px rgba(255, 235, 59, 0.4); }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .dashboard { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Laboratorio de Superposición de Ondas</h1>
+    <p class="subtitle">Suma de armónicos y comportamiento atómico</p>
+
+    <div class="dashboard">
+        
+        <div class="visuals">
+            <div class="canvas-card">
+                <span class="canvas-label">📉 Gráfica de Presión (Tiempo vs Amplitud)</span>
+                <canvas id="graphCanvas" height="250"></canvas>
+            </div>
+
+            <div class="canvas-card">
+                <span class="canvas-label">⚛️ Movimiento del Átomo (Posición Real)</span>
+                <canvas id="atomCanvas" height="150"></canvas>
+            </div>
+        </div>
+
+        <div class="controls-panel">
+            
+            <button id="playBtn" class="main-action">⏸ PAUSAR</button>
+            <br><br>
+
+            <div class="control-group">
+                <h3><span class="indicator" style="background:var(--wave1)"></span> Onda A</h3>
+                
+                <label>Frecuencia (Hz) <span id="valF1" class="value-display">2 Hz</span></label>
+                <input type="range" id="freq1" min="0" max="10" step="0.1" value="2">
+
+                <label>Amplitud (Volumen) <span id="valA1" class="value-display">50%</span></label>
+                <input type="range" id="amp1" min="0" max="100" value="50">
+            </div>
+
+            <div class="control-group">
+                <h3><span class="indicator" style="background:var(--wave2)"></span> Onda B</h3>
+                
+                <label>Frecuencia (Hz) <span id="valF2" class="value-display">3 Hz</span></label>
+                <input type="range" id="freq2" min="0" max="10" step="0.1" value="3">
+
+                <label>Amplitud (Volumen) <span id="valA2" class="value-display">50%</span></label>
+                <input type="range" id="amp2" min="0" max="100" value="50">
+            </div>
+
+            <div style="font-size:0.85em; color:#666; line-height:1.4;">
+                <strong>Nota didáctica:</strong>
+                <br>• Si las frecuencias son casi iguales, observarás "batidos".
+                <br>• La línea amarilla representa la suma matemática: $y = y_A + y_B$.
+            </div>
+
+        </div>
+    </div>
+
+<script>
+    // --- CONFIGURACIÓN ---
+    const graphCanvas = document.getElementById('graphCanvas');
+    const atomCanvas = document.getElementById('atomCanvas');
+    const gCtx = graphCanvas.getContext('2d');
+    const aCtx = atomCanvas.getContext('2d');
+
+    // Estado del sistema
+    let state = {
+        paused: false,
+        time: 0,
+        speed: 0.05,
+        f1: 2, a1: 50,
+        f2: 3, a2: 50
+    };
+
+    // Referencias UI
+    const inputs = {
+        f1: document.getElementById('freq1'),
+        a1: document.getElementById('amp1'),
+        f2: document.getElementById('freq2'),
+        a2: document.getElementById('amp2'),
+        btn: document.getElementById('playBtn')
+    };
+
+    const displays = {
+        f1: document.getElementById('valF1'),
+        a1: document.getElementById('valA1'),
+        f2: document.getElementById('valF2'),
+        a2: document.getElementById('valA2')
+    };
+
+    // --- SETUP CANVAS ---
+    function resize() {
+        // Ajustamos la resolución interna al tamaño visual para nitidez
+        graphCanvas.width = graphCanvas.offsetWidth;
+        graphCanvas.height = graphCanvas.offsetHeight;
+        atomCanvas.width = atomCanvas.offsetWidth;
+        atomCanvas.height = atomCanvas.offsetHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // --- LÓGICA DE ACTUALIZACIÓN ---
+    function updateValues() {
+        state.f1 = parseFloat(inputs.f1.value);
+        state.a1 = parseFloat(inputs.a1.value);
+        state.f2 = parseFloat(inputs.f2.value);
+        state.a2 = parseFloat(inputs.a2.value);
+
+        // Actualizar textos
+        displays.f1.textContent = state.f1 + " Hz";
+        displays.a1.textContent = state.a1 + "%";
+        displays.f2.textContent = state.f2 + " Hz";
+        displays.a2.textContent = state.a2 + "%";
+    }
+
+    // Listeners
+    Object.values(inputs).forEach(input => {
+        if(input !== inputs.btn) input.addEventListener('input', updateValues);
+    });
+
+    inputs.btn.addEventListener('click', () => {
+        state.paused = !state.paused;
+        inputs.btn.innerText = state.paused ? "▶ REANUDAR" : "⏸ PAUSAR";
+        inputs.btn.style.background = state.paused ? "#4caf50" : "#ffeb3b"; // Verde/Amarillo
+    });
+
+    // --- MOTOR DE DIBUJO ---
+    function animate() {
+        if (!state.paused) {
+            state.time += state.speed;
+        }
+
+        drawGraph();
+        drawAtom();
+
+        requestAnimationFrame(animate);
+    }
+
+    // 1. DIBUJAR GRÁFICA (OSCILOSCOPIO)
+    function drawGraph() {
+        const w = graphCanvas.width;
+        const h = graphCanvas.height;
+        const cy = h / 2;
+        
+        gCtx.clearRect(0, 0, w, h);
+
+        // Grid sutil
+        gCtx.strokeStyle = '#222';
+        gCtx.beginPath(); gCtx.moveTo(0, cy); gCtx.lineTo(w, cy); gCtx.stroke();
+
+        // Función para calcular Y en un punto X
+        // x representa el tiempo hacia el futuro desde el borde izquierdo
+        const calcY = (x, freq, amp, offsetTime) => {
+            // Factor de escala visual
+            const scale = 0.8; 
+            // -x porque la onda viaja a la derecha visualmente (el tiempo avanza)
+            return Math.sin((x * 0.02 - offsetTime * 2) * freq) * amp * scale;
+        };
+
+        gCtx.lineWidth = 2;
+
+        // --- ONDA 1 (CYAN) ---
+        gCtx.beginPath();
+        gCtx.strokeStyle = 'rgba(0, 188, 212, 0.4)'; // Semi-transparente
+        for(let x=0; x<w; x++) {
+            const y = calcY(x, state.f1, state.a1, state.time);
+            x===0 ? gCtx.moveTo(x, cy + y) : gCtx.lineTo(x, cy + y);
+        }
+        gCtx.stroke();
+
+        // --- ONDA 2 (MAGENTA) ---
+        gCtx.beginPath();
+        gCtx.strokeStyle = 'rgba(233, 30, 99, 0.4)';
+        for(let x=0; x<w; x++) {
+            const y = calcY(x, state.f2, state.a2, state.time);
+            x===0 ? gCtx.moveTo(x, cy + y) : gCtx.lineTo(x, cy + y);
+        }
+        gCtx.stroke();
+
+        // --- SUMA (AMARILLO - GRUESO) ---
+        gCtx.beginPath();
+        gCtx.strokeStyle = '#ffeb3b';
+        gCtx.lineWidth = 3;
+        gCtx.shadowBlur = 10;
+        gCtx.shadowColor = '#ffeb3b';
+        
+        for(let x=0; x<w; x++) {
+            const y1 = calcY(x, state.f1, state.a1, state.time);
+            const y2 = calcY(x, state.f2, state.a2, state.time);
+            const ySum = y1 + y2;
+            
+            // Clamp para que no salga del canvas
+            const yFinal = Math.max(-h/2 + 5, Math.min(h/2 - 5, ySum));
+
+            x===0 ? gCtx.moveTo(x, cy + yFinal) : gCtx.lineTo(x, cy + yFinal);
+        }
+        gCtx.stroke();
+        gCtx.shadowBlur = 0;
+    }
+
+    // 2. DIBUJAR ÁTOMO
+    // Array para guardar la estela
+    let trail = []; 
+
+    function drawAtom() {
+        const w = atomCanvas.width;
+        const h = atomCanvas.height;
+        const cx = w / 2;
+        const cy = h / 2;
+
+        aCtx.clearRect(0, 0, w, h);
+
+        // Calcular posición actual del átomo (en x=0 de la gráfica, es decir, el presente)
+        const y1 = Math.sin(-state.time * 2 * state.f1) * state.a1 * 0.8;
+        const y2 = Math.sin(-state.time * 2 * state.f2) * state.a2 * 0.8;
+        const displacement = y1 + y2;
+
+        const atomX = cx + displacement; // El átomo se mueve horizontalmente
+        
+        // --- DIBUJAR ESTELA (TRAIL) ---
+        // Guardamos posición
+        if(!state.paused) {
+            trail.push({x: atomX, y: cy, age: 1.0});
+        }
+        // Limpiamos estela vieja
+        if(trail.length > 50) trail.shift();
+
+        // Dibujar estela cayendo hacia abajo para simular "tiempo pasando" en vertical
+        // o simplemente desvaneciéndose en el sitio. 
+        // Vamos a hacer que se desvanezca en el sitio para enfatizar la oscilación 1D.
+        
+        trail.forEach((t, i) => {
+            if(!state.paused) t.age -= 0.02; // Envejecer
+            if(t.age > 0) {
+                aCtx.beginPath();
+                aCtx.arc(t.x, t.y, 10 * t.age, 0, Math.PI*2); // Se hace pequeña
+                aCtx.fillStyle = `rgba(255, 235, 59, ${t.age * 0.3})`;
+                aCtx.fill();
+            }
+        });
+        trail = trail.filter(t => t.age > 0);
+
+        // --- GUÍAS DEL ÁTOMO ---
+        // Muelle o línea guía
+        aCtx.beginPath();
+        aCtx.moveTo(cx - 150, cy); aCtx.lineTo(cx + 150, cy);
+        aCtx.strokeStyle = '#333';
+        aCtx.lineWidth = 1;
+        aCtx.stroke();
+        
+        // Posición de equilibrio
+        aCtx.fillStyle = '#444';
+        aCtx.fillRect(cx - 1, cy - 10, 2, 20);
+
+        // --- EL ÁTOMO ---
+        aCtx.beginPath();
+        aCtx.arc(atomX, cy, 15, 0, Math.PI*2);
+        
+        // Gradiente radial para efecto 3D
+        let grad = aCtx.createRadialGradient(atomX-5, cy-5, 2, atomX, cy, 15);
+        grad.addColorStop(0, '#fff');
+        grad.addColorStop(1, '#ffeb3b');
+        
+        aCtx.fillStyle = grad;
+        aCtx.fill();
+        
+        // Borde
+        aCtx.strokeStyle = '#fff';
+        aCtx.lineWidth = 2;
+        aCtx.stroke();
+    }
+
+    // Iniciar
+    animate();
+
+</script>
+
+</body>
+</html>

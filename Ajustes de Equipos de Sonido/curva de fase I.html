@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-width=1.0">
+    <title>Entendiendo la Curva de Fase (0 - 20kHz)</title>
+    <style>
+        :root {
+            --primary: #2C3E50;
+            --secondary: #3498DB;
+            --accent: #E74C3C;
+            --bg: #ECF0F1;
+            --text: #333;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1, h2, h3 { color: var(--primary); }
+        h1 { border-bottom: 3px solid var(--secondary); padding-bottom: 10px; }
+        .definition-box {
+            background-color: #e8f4f8;
+            border-left: 5px solid var(--secondary);
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .warning-box {
+            background-color: #fdf2e9;
+            border-left: 5px solid var(--accent);
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .interactive-section {
+            border: 2px solid #bdc3c7;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 30px;
+            background-color: #fcfcfc;
+        }
+        .controls, .view-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+            justify-content: center;
+        }
+        .view-controls {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px dashed #ccc;
+        }
+        button {
+            background-color: var(--secondary);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 15px;
+            transition: background 0.3s;
+        }
+        button:hover { background-color: #2980b9; }
+        button.active { background-color: var(--primary); font-weight: bold; }
+        
+        .toggle-btn { background-color: #7f8c8d; }
+        .toggle-btn.active { background-color: #2c3e50; }
+
+        .canvas-container {
+            width: 100%;
+            overflow-x: auto;
+            text-align: center;
+        }
+        canvas {
+            background: #fff;
+            border: 1px solid #ccc;
+            max-width: 100%;
+            border-radius: 5px;
+        }
+        .explanation {
+            text-align: center;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: var(--accent);
+            min-height: 60px;
+            margin-top: 15px;
+        }
+        .calculator {
+            margin-top: 30px;
+            background-color: #eef2f5;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 5px solid var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .calculator input {
+            padding: 8px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 120px;
+        }
+        .calc-result {
+            font-size: 1.2em;
+            color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Guía Interactiva: Lectura de la Curva de Fase</h1>
+    
+    <div class="definition-box">
+        <h3>1. Función de Transferencia</h3>
+        <p>La función de transferencia es el resultado obtenido en un proceso de comparación entre una señal de salida y de entrada en un sistema cualquiera.</p>
+        
+        <h3>2. Función de Transferencia de Fase</h3>
+        <p>Para poder sincronizar la función de transferencia es necesario hacer uso de la función de transferencia de fase. Esta representación, que recibe el nombre de <strong>curva de fase</strong>, reproduce la fase relativa entre la señal de salida y la de entrada de un sistema y nos permite saber cuál es la fase relativa para cada frecuencia.</p>
+    </div>
+
+    <h2>Cómo leer la Curva de Fase</h2>
+    <p>La clave principal está en la dirección de la pendiente de las líneas (las "diagonales") en la gráfica:</p>
+    <ul>
+        <li><strong>Pendiente Descendente (hacia abajo):</strong> Es indicativo de que la medición está <strong>retrasada</strong> respecto a la señal de referencia.</li>
+        <li><strong>Pendiente Creciente (hacia arriba):</strong> Indica que la señal medida está <strong>adelantada</strong> (llega antes) respecto al tiempo de sincronización.</li>
+    </ul>
+
+    <div class="warning-box">
+        <strong>El ciclo o "vuelta" de fase:</strong> Podemos fijarnos en cómo la pendiente de la respuesta se dirige a -180° y, al no poder bajar más, salta y continúa por arriba (+180°) en dirección descendente hasta volver a cruzar la línea de 0°. 
+        <br><br>
+        Por ejemplo: Si la respuesta ha realizado un ciclo completo (una vuelta) en 1 kHz, o si se ha desplazado medio ciclo (180°) en 500 Hz, podemos saber el tiempo de retraso:
+        <br>
+        <em>1/2 ciclo a 500 Hz = 1 ms</em>  &nbsp; o también &nbsp;  <em>1 ciclo a 1 kHz = 1 ms</em>.
+    </div>
+
+    <div class="interactive-section">
+        <h2>Simulador Didáctico de Fase (0 - 20 kHz)</h2>
+        
+        <div class="view-controls">
+            <button onclick="setScale(false)" id="btn-scale-lin" class="toggle-btn active">Escala Lineal</button>
+            <button onclick="setScale(true)" id="btn-scale-log" class="toggle-btn">Escala Logarítmica</button>
+        </div>
+
+        <div class="controls">
+            <button onclick="setTimeShift(0.5)" id="btn-0.5">Retraso 0.5 ms</button>
+            <button onclick="setTimeShift(1)" id="btn-1">Retraso 1 ms</button>
+            <button onclick="setTimeShift(2)" id="btn-2">Retraso 2 ms</button>
+            <button onclick="setTimeShift(0)" id="btn-0" class="active">Sincronizado (0 ms)</button>
+            <button onclick="setTimeShift(-0.5)" id="btn--0.5">Adelanto 0.5 ms</button>
+            <button onclick="setTimeShift(-1)" id="btn--1">Adelanto 1 ms</button>
+            <button onclick="setTimeShift(-2)" id="btn--2">Adelanto 2 ms</button>
+        </div>
+
+        <div class="canvas-container">
+            <canvas id="phaseCanvas" width="800" height="400"></canvas>
+        </div>
+        
+        <div class="explanation" id="text-explanation">
+            Las señales están perfectamente sincronizadas. La diferencia de fase es de 0° en todas las frecuencias.
+        </div>
+    </div>
+
+    <div class="calculator">
+        <div>
+            <h3>Calculadora de Periodo ($T = 1/f$)</h3>
+            <p style="margin-top: 0; font-size: 0.9em; color: #555;">Calcula cuánto tiempo tarda en completarse un ciclo (vuelta de 360°) para una frecuencia específica.</p>
+        </div>
+        <div>
+            <label for="freqInput"><strong>Frecuencia:</strong> </label>
+            <input type="number" id="freqInput" placeholder="Ej. 1000" oninput="calculatePeriod()"> Hz
+        </div>
+        <div class="calc-result">
+            <strong>Periodo (T): </strong> <span id="periodResult">--</span> ms
+        </div>
+    </div>
+
+</div>
+
+<script>
+    const canvas = document.getElementById('phaseCanvas');
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    
+    // Configuración
+    const padding = 55; // Un poco más de margen para las etiquetas
+    const graphWidth = width - padding * 2;
+    const graphHeight = height - padding * 2;
+    
+    // Variables de estado
+    let isLogScale = false;
+    let currentTimeShift = 0; // en ms
+
+    // Frecuencias para dibujo
+    const maxFreq = 20000;
+    const minFreqLog = 20; 
+    const minFreqLin = 0;
+
+    function setScale(logarithmic) {
+        isLogScale = logarithmic;
+        document.getElementById('btn-scale-lin').classList.toggle('active', !logarithmic);
+        document.getElementById('btn-scale-log').classList.toggle('active', logarithmic);
+        drawGraph();
+    }
+
+    function setTimeShift(ms) {
+        currentTimeShift = ms;
+        document.querySelectorAll('.controls button').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(`btn-${ms}`).classList.add('active');
+        drawGraph();
+    }
+
+    // Calcula frecuencia a partir de la posición X
+    function getFreqFromX(xRatio) {
+        if (isLogScale) {
+            return minFreqLog * Math.pow(10, xRatio * Math.log10(maxFreq / minFreqLog));
+        } else {
+            return xRatio * maxFreq;
+        }
+    }
+
+    // Calcula la posición X a partir de la frecuencia (para dibujar rejilla)
+    function getXFromFreq(f) {
+        if (isLogScale) {
+            if (f < minFreqLog) return 0;
+            return (Math.log10(f / minFreqLog) / Math.log10(maxFreq / minFreqLog)) * graphWidth;
+        } else {
+            return (f / maxFreq) * graphWidth;
+        }
+    }
+
+    function drawGrid() {
+        ctx.clearRect(0, 0, width, height);
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.font = '11px Arial';
+
+        // Eje Y (Fase cada 45 grados)
+        const yLines = [180, 135, 90, 45, 0, -45, -90, -135, -180];
+        yLines.forEach(val => {
+            const y = padding + (1 - (val + 180) / 360) * graphHeight;
+            ctx.beginPath();
+            
+            // Destacar la línea del 0
+            if (val === 0) {
+                ctx.strokeStyle = '#999';
+                ctx.lineWidth = 1.5;
+            } else {
+                ctx.strokeStyle = '#e5e5e5';
+                ctx.lineWidth = 1;
+            }
+            
+            ctx.moveTo(padding, y);
+            ctx.lineTo(width - padding, y);
+            ctx.stroke();
+            
+            ctx.fillStyle = val === 0 ? '#333' : '#777';
+            ctx.fillText(val + '°', padding - 5, y);
+        });
+
+        // Eje X (Frecuencias con más precision)
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        
+        // Arrays de frecuencias dependiendo de la escala
+        let xLines = isLogScale 
+            ? [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000] 
+            : [0, 2000, 4000, 6000, 8000, 10000, 12000, 14000, 16000, 18000, 20000];
+        
+        xLines.forEach(val => {
+            const x = padding + getXFromFreq(val);
+            ctx.beginPath();
+            ctx.strokeStyle = '#e5e5e5';
+            ctx.lineWidth = 1;
+            ctx.moveTo(x, padding);
+            ctx.lineTo(x, height - padding);
+            ctx.stroke();
+            
+            // Formatear texto (ej. 2k en vez de 2000)
+            let label = val >= 1000 ? (val / 1000) + 'k' : val;
+            ctx.fillStyle = '#666';
+            ctx.fillText(label, x, height - padding + 8);
+        });
+
+        // Dibujar caja exterior
+        ctx.strokeStyle = '#ccc';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(padding, padding, graphWidth, graphHeight);
+
+        // Títulos de los ejes
+        ctx.fillStyle = '#333';
+        ctx.font = 'bold 13px Arial';
+        ctx.fillText('Frecuencia (Hz)', width / 2, height - 15);
+        
+        ctx.save();
+        ctx.translate(15, height / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText('Fase (°)', 0, 0);
+        ctx.restore();
+    }
+
+    function mod(n, m) {
+        return ((n % m) + m) % m;
+    }
+
+    function drawGraph() {
+        drawGrid();
+
+        if (currentTimeShift === 0) {
+            ctx.strokeStyle = '#27ae60';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(padding, padding + graphHeight / 2);
+            ctx.lineTo(width - padding, padding + graphHeight / 2);
+            ctx.stroke();
+            document.getElementById('text-explanation').innerText = "Las señales están perfectamente sincronizadas. La fase es 0° en todo el espectro.";
+            return;
+        }
+
+        ctx.strokeStyle = currentTimeShift > 0 ? '#e74c3c' : '#2980b9';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+
+        let prevY = null;
+        let pointsDrawn = 0;
+
+        for (let x = 0; x <= graphWidth; x++) {
+            const xRatio = x / graphWidth;
+            const freq = getFreqFromX(xRatio);
+            
+            if (isLogScale && freq < minFreqLog) continue;
+
+            const rawPhase = -360 * freq * (currentTimeShift / 1000); 
+            let wrappedPhase = mod(rawPhase + 180, 360) - 180;
+            
+            const px = padding + x;
+            const py = padding + (1 - (wrappedPhase + 180) / 360) * graphHeight;
+
+            if (pointsDrawn === 0) {
+                ctx.moveTo(px, py);
+            } else {
+                if (prevY !== null && Math.abs(py - prevY) > graphHeight * 0.8) {
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(px, py);
+                } else {
+                    ctx.lineTo(px, py);
+                }
+            }
+            prevY = py;
+            pointsDrawn++;
+        }
+        ctx.stroke();
+
+        const exp = document.getElementById('text-explanation');
+        let cyclesAt1k = Math.abs(currentTimeShift); 
+        let cyclesAt20k = Math.abs(currentTimeShift) * 20; 
+
+        if (currentTimeShift > 0) {
+            exp.innerHTML = `<strong>Pendiente Descendente:</strong> Hay un <strong>retraso de ${currentTimeShift} ms</strong>.<br> A 1 kHz hace ${cyclesAt1k} ciclo(s). A 20 kHz la gráfica ha completado un total de ${cyclesAt20k} ciclos de caída.`;
+        } else {
+            exp.innerHTML = `<strong>Pendiente Creciente:</strong> Hay un <strong>adelanto de ${Math.abs(currentTimeShift)} ms</strong>.<br> A 1 kHz hace ${cyclesAt1k} ciclo(s). A 20 kHz la gráfica ha completado un total de ${cyclesAt20k} ciclos de subida.`;
+        }
+    }
+
+    function calculatePeriod() {
+        const freqInput = document.getElementById('freqInput').value;
+        const resultSpan = document.getElementById('periodResult');
+        const freq = parseFloat(freqInput);
+
+        if (!isNaN(freq) && freq > 0) {
+            const periodMs = (1 / freq) * 1000;
+            resultSpan.innerText = periodMs.toFixed(3);
+            resultSpan.style.color = '#E74C3C';
+        } else {
+            resultSpan.innerText = '--';
+            resultSpan.style.color = 'inherit';
+        }
+    }
+
+    drawGraph();
+</script>
+
+</body>
+</html>

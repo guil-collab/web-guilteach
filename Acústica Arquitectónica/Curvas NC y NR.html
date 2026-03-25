@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Analizador Acústico Pro: NC vs NR Interactivo</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --primary: #2c3e50; --nc-color: #e67e22; --nr-color: #27ae60; --bg: #f8f9fa; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
+        .wrapper { max-width: 1200px; margin: 0 auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        
+        .layout { display: grid; grid-template-columns: 320px 1fr; gap: 25px; margin-top: 20px; }
+        
+        /* Panel de control */
+        .controls { background: #f1f3f5; padding: 20px; border-radius: 10px; border: 1px solid #e9ecef; }
+        .input-row { display: flex; justify-content: space-between; margin-bottom: 10px; align-items: center; }
+        input[type="number"] { width: 65px; padding: 8px; border: 1px solid #ced4da; border-radius: 5px; text-align: center; font-weight: bold; }
+        
+        /* Selector de Curva */
+        .selector-container { background: #fff; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #ddd; text-align: center; }
+        .mode-btn { padding: 10px 20px; border: 2px solid var(--primary); background: white; cursor: pointer; font-weight: bold; transition: 0.3s; width: 45%; }
+        .mode-btn.active { background: var(--primary); color: white; }
+        .mode-btn:first-child { border-radius: 5px 0 0 5px; }
+        .mode-btn:last-child { border-radius: 0 5px 5px 0; }
+
+        .btn-update { width: 100%; background: var(--primary); color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; margin-top: 15px; }
+        
+        /* Resultados */
+        .info-box { margin-top: 20px; padding: 15px; background: #fff4e6; border-left: 5px solid var(--nc-color); border-radius: 4px; transition: border-color 0.3s; }
+        .result-val { font-size: 32px; font-weight: bold; color: var(--nc-color); transition: color 0.3s; }
+
+        /* Gráfico */
+        .chart-container { height: 550px; position: relative; border: 1px solid #eee; border-radius: 8px; padding: 10px; background: #fff; }
+
+        /* Documentación */
+        .docs { margin-top: 30px; padding: 20px; border-top: 2px solid #eee; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; line-height: 1.6; }
+        .docs h3 { color: var(--primary); margin-top: 0; border-bottom: 2px solid var(--nc-color); display: inline-block; transition: border-color 0.3s; }
+    </style>
+</head>
+<body>
+
+<div class="wrapper">
+    <header style="text-align: center;">
+        <h1 style="margin:0;">Analizador de Ruido Ambiental Interactivo</h1>
+        <p>Pasa el cursor sobre las líneas para identificar su valor NC/NR.</p>
+    </header>
+
+    <div class="layout">
+        <aside class="controls">
+            <div class="selector-container">
+                <strong>Normativa:</strong><br><br>
+                <button id="btn-nc" class="mode-btn active" onclick="setMode('NC')">NC</button>
+                <button id="btn-nr" class="mode-btn" onclick="setMode('NR')">NR</button>
+            </div>
+
+            <h3 style="margin-top:0;">Niveles Medidos (dB)</h3>
+            <div id="input-fields"></div>
+            <button class="btn-update" onclick="updateChart()">Calcular y Graficar</button>
+            
+            <div class="info-box" id="result-box">
+                <strong>Clasificación <span id="mode-label">NC</span>:</strong><br>
+                <span id="result-label" class="result-val">--</span>
+            </div>
+        </aside>
+
+        <main>
+            <div class="chart-container">
+                <canvas id="mainChart"></canvas>
+            </div>
+        </main>
+    </div>
+
+    <section class="docs">
+        <div>
+            <h3 id="doc-title-1">¿Qué es el NC y NR?</h3>
+            <p><strong>NC (Noise Criteria):</strong> Estándar americano (ANSI) enfocado en la interferencia del ruido de fondo con la comunicación oral en interiores.</p>
+            <p><strong>NR (Noise Rating):</strong> Estándar internacional (ISO). Es más exigente en frecuencias bajas y se usa también para evaluar molestias en exteriores.</p>
+        </div>
+        <div>
+            <h3 id="doc-title-2">¿Cómo se calcula?</h3>
+            <p>Ambas curvas se calculan mediante el <strong>método de la tangencia</strong>:</p>
+            <ol>
+                <li>Se miden los niveles de presión sonora en bandas de octava.</li>
+                <li>Se superpone la medición sobre las curvas estándar.</li>
+                <li>El valor final corresponde a la <strong>curva más alta que es tocada o superada</strong> por cualquier punto de la medición.</li>
+            </ol>
+        </div>
+    </section>
+</div>
+
+<script>
+    const freqs = [63, 125, 250, 500, 1000, 2000, 4000, 8000];
+    let currentMode = 'NC';
+    
+    // --- DATOS DE REFERENCIA ---
+    const ncData = {
+        20:[51,40,33,26,22,19,17,16], 25:[54,44,37,31,27,24,22,21], 30:[57,48,41,35,31,29,28,27],
+        35:[60,52,45,40,36,34,33,32], 40:[64,56,50,45,41,39,38,37], 45:[67,60,54,49,46,44,43,42],
+        50:[71,64,58,54,51,49,48,47], 55:[74,67,62,58,56,54,53,52], 60:[77,71,67,63,61,59,58,57],
+        65:[80,75,71,68,66,64,63,62], 70:[83,79,75,72,71,70,69,68]
+    };
+
+    const nrData = {
+        20:[50,39,31,24,20,17,14,13], 25:[54,44,35,29,25,22,20,18], 30:[58,48,40,34,30,27,25,23],
+        35:[62,53,45,39,35,32,30,28], 40:[66,57,50,44,40,37,35,33], 45:[70,62,54,49,45,42,40,38],
+        50:[74,66,59,54,50,47,45,43], 55:[78,71,64,59,55,52,50,48], 60:[81,75,69,64,60,57,55,53],
+        65:[85,79,74,69,65,62,60,58], 70:[89,84,78,74,70,67,65,63]
+    };
+
+    // --- INICIALIZACIÓN DE INPUTS ---
+    const inputContainer = document.getElementById('input-fields');
+    // Valores de ejemplo para visualización inicial
+    const exampleValues = [65, 58, 52, 48, 42, 38, 35, 30]; 
+
+    freqs.forEach((f, i) => {
+        inputContainer.innerHTML += `
+            <div class="input-row">
+                <label>${f} Hz:</label>
+                <input type="number" class="nc-input" value="${exampleValues[i]}" oninput="updateChart()">
+            </div>`;
+    });
+
+    let myChart;
+
+    // --- FUNCIONES DEL GRÁFICO ---
+    function initChart() {
+        const ctx = document.getElementById('mainChart').getContext('2d');
+        myChart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: freqs.map(f => f + ' Hz'), datasets: [] },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                // --- CAMBIO 1: Interacción ---
+                // 'dataset' hace que se ilumine la línea entera, no solo el punto.
+                interaction: {
+                    mode: 'dataset', 
+                    intersect: false
+                },
+                scales: { 
+                    y: { 
+                        min: 10, 
+                        max: 95, // Aumentado ligeramente para dar aire
+                        title: { display: true, text: 'Nivel de Presión Sonora (dB)' } 
+                    },
+                    x: { title: { display: true, text: 'Frecuencia Octava (Hz)' } }
+                },
+                plugins: { 
+                    legend: { display: false }, // Ocultar leyenda para no saturar
+                    // --- CAMBIO 2: Configuración de Tooltips ---
+                    tooltip: {
+                        enabled: true,
+                        backgroundColor: 'rgba(44, 62, 80, 0.9)', // Color primario oscuro
+                        titleFont: { size: 14, weight: 'bold' },
+                        bodyFont: { size: 13 },
+                        padding: 10,
+                        cornerRadius: 6,
+                        callbacks: {
+                            // Personalizar el título del tooltip (Número de NC/NR)
+                            title: function(context) {
+                                return context[0].dataset.label; 
+                            },
+                            // Personalizar el cuerpo del tooltip (Valores de la curva)
+                            label: function(context) {
+                                return `Nivel: ${context.parsed.y} dB`;
+                            }
+                        }
+                    }
+                },
+                // --- CAMBIO 3: Animaciones más suaves para el hover ---
+                hover: {
+                    animationDuration: 200
+                }
+            }
+        });
+        updateChart(); // Primera carga
+    }
+
+    function setMode(mode) {
+        currentMode = mode;
+        // Actualizar UI de botones
+        document.getElementById('btn-nc').classList.toggle('active', mode === 'NC');
+        document.getElementById('btn-nr').classList.toggle('active', mode === 'NR');
+        document.getElementById('mode-label').innerText = mode;
+        
+        // Cambiar colores de acento dinámicamente
+        const accentColor = mode === 'NC' ? '#e67e22' : '#27ae60';
+        document.getElementById('result-box').style.borderLeftColor = accentColor;
+        document.getElementById('result-label').style.color = accentColor;
+        document.getElementById('doc-title-1').style.borderBottomColor = accentColor;
+        document.getElementById('doc-title-2').style.borderBottomColor = accentColor;
+
+        updateChart(); // Recargar gráfico con nuevos datos
+    }
+
+    function updateChart() {
+        if (!myChart) return;
+
+        const inputs = document.querySelectorAll('.nc-input');
+        const userData = Array.from(inputs).map(i => parseFloat(i.value) || 0);
+        const referenceData = currentMode === 'NC' ? ncData : nrData;
+        
+        // Definir colores base y de hover según el modo
+        const baseColor = currentMode === 'NC' ? 'rgba(230, 126, 34,' : 'rgba(39, 174, 96,';
+        const hoverColor = currentMode === 'NC' ? 'rgba(230, 126, 34, 1)' : 'rgba(39, 174, 96, 1)';
+
+        const datasets = [];
+
+        // --- CAMBIO 4: Generar curvas de referencia con propiedades de Hover ---
+        Object.keys(referenceData).forEach(key => {
+            datasets.push({
+                label: currentMode + " " + key, // Título que aparecerá en el tooltip
+                data: referenceData[key],
+                borderColor: baseColor + ' 0.15)', // Muy tenue por defecto
+                borderWidth: 1.5,
+                pointRadius: 0, // Ocultar puntos por defecto
+                fill: false,
+                tension: 0.1, // Suavizado ligero
+                
+                // Propiedades de interacción (Hover)
+                hoverBorderColor: hoverColor, // Se ilumina a color sólido
+                hoverBorderWidth: 3.5, // Se vuelve más gruesa
+                pointHoverRadius: 0 // Mantener puntos ocultos en hover para limpieza
+            });
+        });
+
+        // --- CAMBIO 5: Dataset de la Medición (siempre visible) ---
+        datasets.push({
+            label: 'TU MEDICIÓN',
+            data: userData,
+            borderColor: '#2c3e50', // Color primario oscuro
+            borderWidth: 4,
+            pointRadius: 5,
+            pointBackgroundColor: '#2c3e50',
+            fill: false,
+            zIndex: 99, // Asegurar que esté por encima de todas las líneas
+            
+            // Hover de la medición
+            hoverBorderWidth: 5,
+            pointHoverRadius: 7
+        });
+
+        myChart.data.datasets = datasets;
+        myChart.update('none'); // Update sin animación para mayor rendimiento al escribir
+        
+        calculateResult(userData, referenceData);
+    }
+
+    function calculateResult(userData, referenceData) {
+        let finalVal = 0;
+        
+        // Método de la tangencia: buscar la curva más baja que no es superada
+        const keys = Object.keys(referenceData).sort((a, b) => a - b);
+        
+        for (let key of keys) {
+            const val = parseInt(key);
+            const curve = referenceData[key];
+            const exceeded = userData.some((v, i) => v > curve[i]);
+            
+            if (exceeded) {
+                finalVal = val + 5; // Salto al siguiente índice estándar (20, 25, 30...)
+            } else {
+                // Si la medición actual no supera esta curva, esta es la clasificación
+                finalVal = val;
+                break;
+            }
+        }
+        
+        // Asegurar rango mínimo y máximo visible en datos
+        const displayVal = finalVal < 20 ? 20 : (finalVal > 70 ? "70+" : finalVal);
+        document.getElementById('result-label').innerText = currentMode + "-" + displayVal;
+    }
+
+    window.onload = initChart;
+</script>
+
+</body>
+</html>

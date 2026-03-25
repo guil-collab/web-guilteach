@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Laboratorio de Física: La Danza de los Átomos</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #080808; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        
+        /* --- ESTRUCTURA DE PANELES --- */
+        .panel {
+            position: absolute;
+            background: rgba(15, 15, 20, 0.95); /* Fondo oscuro casi opaco */
+            backdrop-filter: blur(5px);
+            border: 1px solid #444;
+            border-radius: 12px;
+            color: #e0e0e0;
+            padding: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            z-index: 10;
+        }
+
+        /* --- PANEL IZQUIERDO (EDUCATIVO) --- */
+        #edu-panel {
+            top: 20px; left: 20px; bottom: 20px;
+            width: 320px;
+            overflow-y: auto; /* Scroll si es necesario */
+            scrollbar-width: thin;
+        }
+
+        h1 { margin: 0 0 10px 0; font-size: 20px; color: #fff; border-bottom: 2px solid #4facfe; padding-bottom: 10px; }
+        h3 { margin: 25px 0 10px 0; font-size: 15px; color: #4facfe; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; }
+        p { font-size: 14px; line-height: 1.6; color: #ccc; margin-bottom: 15px; }
+        
+        strong { color: white; }
+        
+        .highlight-box {
+            background: rgba(255, 255, 0, 0.05);
+            border-left: 3px solid #ffff00;
+            padding: 10px; margin: 15px 0;
+            font-size: 13px; color: #eee;
+            font-style: italic;
+        }
+
+        .legend-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 13px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+        .dot.red { background: #ff5e5e; box-shadow: 0 0 5px #ff5e5e; }
+        .dot.blue { background: #5e5eff; box-shadow: 0 0 5px #5e5eff; }
+
+        /* --- PANEL DERECHO (CONTROLES) --- */
+        #control-panel {
+            top: 20px; right: 20px;
+            width: 260px;
+        }
+
+        /* Botonera */
+        .btn-row { display: flex; gap: 8px; margin-bottom: 10px; }
+        button.phase-btn {
+            flex: 1; padding: 10px; background: #2a2a2a; border: 1px solid #555; color: white;
+            cursor: pointer; border-radius: 6px; font-size: 12px; transition: 0.2s; font-weight: bold;
+        }
+        button.phase-btn:hover { background: #444; border-color: #4facfe; }
+        button.phase-btn.active { background: #4facfe; color: #000; border-color: #4facfe; }
+
+        #btnPause {
+            width: 100%; padding: 12px; margin-bottom: 20px;
+            background: #d63031; color: white; border: none; border-radius: 6px;
+            font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        #btnPause:hover { background: #ff7675; }
+        #btnPause.is-paused { background: #00b894; }
+
+        input[type=range] { width: 100%; margin-top: 15px; cursor: pointer; accent-color: #4facfe; }
+        #valText { text-align: center; color: #4facfe; font-size: 18px; font-weight: bold; margin-top: 5px; }
+
+        /* --- LIENZOS --- */
+        #canvas3d { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        #canvas2d { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
+    </style>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+    <div id="edu-panel" class="panel">
+        <h1>Conceptos Físicos</h1>
+
+        <h3>1. El átomo no viaja, solo baila</h3>
+        <p>Observa cualquier átomo individual (especialmente el amarillo). <strong>No se desplaza</strong> desde el altavoz hasta el final del tubo.</p>
+        <div class="highlight-box">
+            "El átomo solo oscila (baila) alrededor de su posición de equilibrio. Lo que viaja es la energía, pasando de un átomo a otro como en una cadena de dominó."
+        </div>
+
+        <h3>2. Presión es "Apiñamiento"</h3>
+        <p>El sonido son cambios de densidad en el aire:</p>
+        <div class="legend-row"><span class="dot red"></span> <strong>Compresión:</strong> Los átomos se "apiñan". Alta presión.</div>
+        <div class="legend-row"><span class="dot blue"></span> <strong>Rarefacción:</strong> Los átomos se estiran. Baja presión.</div>
+
+        <h3>3. El Átomo "Ciego" y las Fuerzas</h3>
+        <p>Mira la fila de abajo (Suma). Un átomo no sabe que hay dos ondas. Él solo siente <strong>dos fuerzas</strong> empujándole a la vez:</p>
+        
+        <p><strong>En Fase (0°): Empujón Coordinado.</strong><br>
+        La Fuerza A empuja a la derecha. La Fuerza B también empuja a la derecha. <br>
+        <em>Resultado:</em> ¡Un empujón doble! (+6dB).</p>
+
+        <p><strong>En Contra-Fase (180°): Tira y Afloja.</strong><br>
+        La Fuerza A empuja a la derecha. <br>
+        La Fuerza B empuja a la izquierda con la misma intensidad.<br>
+        <em>Resultado:</em> Las fuerzas se cancelan. El átomo se queda quieto. Silencio.</p>
+    </div>
+
+
+    <div id="control-panel" class="panel">
+        <h2 style="margin:0 0 15px 0; color:#4facfe; font-size:16px; text-transform: uppercase;">Laboratorio</h2>
+        
+        <button id="btnPause" onclick="togglePause()">
+            <span>⏸</span> PAUSAR SIMULACIÓN
+        </button>
+
+        <p style="margin-bottom:5px;">Ajustar Fase (Tiempo):</p>
+        
+        <div class="btn-row">
+            <button class="phase-btn active" onclick="updatePhase(0, this)">0°</button>
+            <button class="phase-btn" onclick="updatePhase(90, this)">90°</button>
+        </div>
+        <div class="btn-row">
+            <button class="phase-btn" onclick="updatePhase(120, this)">120°</button>
+            <button class="phase-btn" onclick="updatePhase(180, this)">180°</button>
+        </div>
+        
+        <input type="range" id="slider" min="0" max="360" value="0">
+        <div id="valText">0°</div>
+    </div>
+
+    <canvas id="canvas3d"></canvas>
+    <canvas id="canvas2d"></canvas>
+
+    <script>
+        // --- 1. CONFIGURACIÓN BÁSICA ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050508);
+        scene.fog = new THREE.FogExp2(0x050508, 0.02);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 0, 32); 
+
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas3d'), antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        dirLight.position.set(5, 10, 7);
+        scene.add(dirLight);
+
+        // --- 2. CONFIGURACIÓN DE FILAS ---
+        const rows = [];
+        const particlesCount = 45;
+        const spacing = 0.7;
+        const tubeLength = particlesCount * spacing;
+
+        // Materiales
+        const atomGeo = new THREE.SphereGeometry(0.25, 16, 16);
+        const atomMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.4 });
+        const heroMat = new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0x444400, emissiveIntensity: 0.6 });
+        const coneGeo = new THREE.ConeGeometry(2.5, 5, 32, 1, true); coneGeo.rotateZ(-Math.PI / 2);
+        const coneMat = new THREE.MeshStandardMaterial({ color: 0x222222, side: THREE.DoubleSide });
+        const tubeGeo = new THREE.CylinderGeometry(1.2, 1.2, tubeLength, 16, 1, true); tubeGeo.rotateZ(Math.PI / 2);
+        const tubeMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.04, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
+
+        function createRow(yPos, label) {
+            const group = new THREE.Group();
+            group.position.y = yPos;
+            scene.add(group);
+
+            // Altavoz
+            const cone = new THREE.Mesh(coneGeo, coneMat);
+            cone.position.x = - (tubeLength / 2) - 2.5;
+            group.add(cone);
+            const memb = new THREE.Mesh(new THREE.CircleGeometry(2.4, 32), new THREE.MeshStandardMaterial({color:0x111111}));
+            memb.rotation.y = -Math.PI/2; memb.position.x = - (tubeLength / 2) - 0.1;
+            group.add(memb);
+
+            // Tubo
+            const tube = new THREE.Mesh(tubeGeo, tubeMat);
+            group.add(tube);
+
+            // Átomos
+            const atoms = [];
+            for(let i=0; i<particlesCount; i++) {
+                const isHero = (i === Math.floor(particlesCount/2));
+                const mesh = new THREE.Mesh(atomGeo, isHero ? heroMat : atomMat);
+                const xBase = (i * spacing) - (tubeLength / 2);
+                mesh.position.set(xBase, 0, 0);
+                mesh.userData = { xBase: xBase, isHero: isHero, id: i };
+                group.add(mesh);
+                atoms.push(mesh);
+            }
+            return { group, atoms, membrane: memb, y: yPos, label };
+        }
+
+        const rowA = createRow(7, "Señal A (Ref)");
+        const rowB = createRow(0, "Señal B (Fase)");
+        const rowSum = createRow(-7, "Suma Total");
+
+        // --- 3. VARIABLES Y UI ---
+        let time = 0;
+        let isPaused = false;
+        const simSpeed = 0.03; // Lento para ver el "baile"
+        const spatialFreq = 0.35; 
+        const amplitude = 0.8;
+
+        let phaseDeg = 0;
+        const slider = document.getElementById('slider');
+        const valText = document.getElementById('valText');
+        const btnPause = document.getElementById('btnPause');
+
+        window.togglePause = function() {
+            isPaused = !isPaused;
+            if(isPaused) {
+                btnPause.classList.add('is-paused');
+                btnPause.innerHTML = "<span>▶</span> REANUDAR";
+            } else {
+                btnPause.classList.remove('is-paused');
+                btnPause.innerHTML = "<span>⏸</span> PAUSAR SIMULACIÓN";
+            }
+        };
+
+        window.updatePhase = function(val, btn) {
+            phaseDeg = val;
+            slider.value = val;
+            valText.innerText = val + "°";
+            document.querySelectorAll('.phase-btn').forEach(b => b.classList.remove('active'));
+            if(btn) btn.classList.add('active');
+            else {
+                 document.querySelectorAll('.phase-btn').forEach(b => {
+                    if(parseInt(b.innerText) === val) b.classList.add('active');
+                });
+            }
+        };
+
+        slider.addEventListener('input', (e) => {
+            updatePhase(parseInt(e.target.value), null);
+        });
+
+        // --- 4. ANIMACIÓN ---
+        const canvas2d = document.getElementById('canvas2d');
+        const ctx = canvas2d.getContext('2d');
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if(!isPaused) time += simSpeed;
+            const phaseRad = phaseDeg * (Math.PI / 180);
+
+            // Lógica Física
+            const calcWave = (x, t, phi) => {
+                const disp = Math.sin(t - spatialFreq * x - phi) * amplitude;
+                const press = Math.cos(t - spatialFreq * x - phi);
+                return { disp, press };
+            };
+
+            // Fila A
+            rowA.atoms.forEach(a => {
+                const w = calcWave(a.userData.xBase, time, 0);
+                a.position.x = a.userData.xBase + w.disp;
+                colorAtom(a, w.press);
+            });
+            if(!isPaused) rowA.membrane.position.x = - (tubeLength/2) + Math.sin(time)*0.2;
+
+            // Fila B
+            rowB.atoms.forEach(a => {
+                const w = calcWave(a.userData.xBase, time, phaseRad);
+                a.position.x = a.userData.xBase + w.disp;
+                colorAtom(a, w.press);
+            });
+            if(!isPaused) rowB.membrane.position.x = - (tubeLength/2) + Math.sin(time - phaseRad)*0.2;
+
+            // Fila Suma (Explicación visual de "Dos Fuerzas")
+            rowSum.atoms.forEach(a => {
+                const wA = calcWave(a.userData.xBase, time, 0);
+                const wB = calcWave(a.userData.xBase, time, phaseRad);
+                
+                // Aquí ocurre la suma de fuerzas
+                a.position.x = a.userData.xBase + (wA.disp + wB.disp);
+                
+                // La presión también se suma
+                colorAtom(a, (wA.press + wB.press) * 0.5);
+            });
+
+            renderer.render(scene, camera);
+            drawGraphs(phaseRad);
+        }
+
+        function colorAtom(atom, press) {
+            if(atom.userData.isHero) return;
+            // Umbrales para colorear (Rojo/Azul)
+            if(press > 0.15) atom.material.color.setHSL(0.0, 0.8, 0.5); 
+            else if(press < -0.15) atom.material.color.setHSL(0.6, 0.8, 0.5); 
+            else atom.material.color.setHex(0x888888);
+        }
+
+        // --- 5. GRÁFICAS 2D ---
+        function drawGraphs(phi) {
+            canvas2d.width = window.innerWidth;
+            canvas2d.height = window.innerHeight;
+            ctx.clearRect(0,0, canvas2d.width, canvas2d.height);
+
+            drawRowGraph(rowA, 0);
+            drawRowGraph(rowB, phi);
+            drawRowGraph(rowSum, phi, true);
+        }
+
+        function drawRowGraph(row, phi, isSum=false) {
+            const hero = row.atoms.find(a => a.userData.isHero);
+            const vec = new THREE.Vector3();
+            hero.getWorldPosition(vec);
+            vec.project(camera);
+
+            const x = (vec.x * .5 + .5) * canvas2d.width;
+            const y = (-(vec.y * .5) + .5) * canvas2d.height;
+            const gY = y + 65; 
+            const gW = 500;
+
+            ctx.beginPath();
+            ctx.strokeStyle = isSum ? "#d400ff" : "#4facfe";
+            ctx.lineWidth = 3;
+
+            for(let i=0; i<=gW; i+=5) {
+                const relX = (i - gW/2) * (spatialFreq * 0.15);
+                let val = 0;
+                if(!isSum) val = Math.cos(time - relX - phi);
+                else val = Math.cos(time - relX) + Math.cos(time - relX - phi);
+                
+                const py = gY - (val * 25);
+                const px = x + (i - gW/2);
+                if(i===0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+            }
+            ctx.stroke();
+
+            // Puntos y Conectores
+            let curVal = 0;
+            if(!isSum) curVal = Math.cos(time - phi);
+            else curVal = Math.cos(time) + Math.cos(time - phi);
+            const pY = gY - (curVal * 25);
+
+            ctx.beginPath(); ctx.setLineDash([5,5]); ctx.strokeStyle = "rgba(255,255,0,0.4)";
+            ctx.moveTo(x, y); ctx.lineTo(x, pY); ctx.stroke(); ctx.setLineDash([]);
+            
+            ctx.beginPath(); ctx.fillStyle="#ffff00"; ctx.arc(x, pY, 5, 0, Math.PI*2); ctx.fill();
+
+            // Etiqueta
+            ctx.font = "bold 14px Segoe UI"; ctx.fillStyle = "#fff";
+            ctx.textAlign = "right"; ctx.fillText(row.label, x - 260, y); ctx.textAlign = "left";
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>

@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Class: La Curva de Fase</title>
+    <style>
+        :root {
+            --bg: #121212;
+            --card: #1e1e1e;
+            --text: #ffffff;
+            --accent: #00e5ff; /* Cyan brillante */
+            --meas: #ffb300;   /* Naranja Ámbar (Fase) */
+            --green: #00e676;  /* 500Hz */
+            --blue: #2979ff;   /* 1000Hz */
+            --pink: #ff4081;   /* 2000Hz */
+            --grid: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0; padding: 0;
+            line-height: 1.6;
+        }
+
+        .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+
+        /* --- CABECERA --- */
+        header {
+            text-align: center; padding: 40px 0;
+            border-bottom: 2px solid var(--accent); margin-bottom: 40px;
+        }
+        h1 { margin: 0; font-size: 2.5rem; color: #fff; text-shadow: 0 0 15px rgba(0,229,255,0.4); }
+        .subtitle { font-size: 1.2rem; color: #bbb; font-weight: 300; margin-top: 10px; }
+
+        /* --- SECCIONES DIDÁCTICAS --- */
+        section {
+            background: var(--card); padding: 30px; border-radius: 12px;
+            margin-bottom: 40px; border-left: 5px solid var(--accent);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        h2 { margin-top: 0; color: var(--accent); font-size: 1.6rem; display: flex; align-items: center; gap: 10px; }
+        .icon { font-size: 1.8rem; }
+        p, li { color: #ddd; font-size: 1.05rem; }
+        strong { color: #fff; }
+
+        .highlight-box {
+            background: rgba(0, 229, 255, 0.1); padding: 15px; 
+            border-radius: 8px; margin: 20px 0; border: 1px solid var(--accent);
+            text-align: center; font-size: 1.2rem; font-weight: bold; color: #fff;
+        }
+
+        /* --- SIMULADOR ALTO CONTRASTE --- */
+        .sim-container { 
+            background: #000; padding: 5px; border-radius: 8px; 
+            position: relative; margin: 20px 0; border: 1px solid #555;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        canvas { display: block; width: 100%; background: #050505; border-radius: 4px; }
+        
+        .y-label {
+            position: absolute; top: 50%; left: 10px; 
+            transform: translateY(-50%) rotate(-90deg);
+            font-size: 0.8rem; color: #aaa; font-weight: bold; pointer-events: none;
+            background: rgba(0,0,0,0.6); padding: 3px 6px; border-radius: 4px;
+        }
+
+        /* --- ANALOGÍA VELOCÍMETRO --- */
+        .analogy-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; margin-bottom: 20px;
+            border: 1px solid #444;
+        }
+        .speed-indicator { font-size: 1.4rem; font-weight: bold; display: flex; gap: 15px; align-items: center; }
+        .arrow { display: inline-block; transition: transform 0.3s ease; font-size: 2rem; }
+
+        /* --- TABLA DATOS --- */
+        .data-panel {
+            background: #252525; border-radius: 8px; padding: 20px;
+            border-top: 3px solid var(--meas); margin-bottom: 20px;
+        }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+        .data-table th { text-align: left; color: #999; border-bottom: 1px solid #555; padding-bottom: 8px; }
+        .data-table td { padding: 12px 0; border-bottom: 1px solid #444; }
+        .col-freq { font-weight: bold; color: #fff; }
+        .col-data { font-family: monospace; color: var(--meas); font-size: 1.1em; font-weight: bold; }
+        .col-desc { font-style: italic; color: #aaa; font-size: 0.9rem; }
+
+        /* --- CONTROLES --- */
+        .controls {
+            background: #2d2d2d; padding: 25px; border-radius: 8px;
+            display: grid; gap: 25px; border: 1px solid #444;
+        }
+
+        .slider-group label { display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 10px; }
+        .readout { color: var(--meas); font-family: monospace; font-size: 1.4rem; text-shadow: 0 0 8px rgba(255,179,0,0.3); }
+        input[type=range] { width: 100%; accent-color: var(--meas); cursor: pointer; height: 8px; }
+
+        .btn-toolbar { display: flex; flex-wrap: wrap; gap: 15px; justify-content: space-between; }
+        .btn-group { display: flex; gap: 5px; }
+
+        button {
+            padding: 10px 18px; border: none; border-radius: 6px; 
+            background: #4a4a4a; color: #fff; cursor: pointer; font-weight: bold; font-size: 0.9rem;
+            transition: 0.2s; border: 1px solid #555;
+        }
+        button:hover { background: #666; border-color: #888; }
+        button.active { background: var(--accent); color: #000; border-color: var(--accent); box-shadow: 0 0 15px rgba(0,229,255,0.4); }
+        
+        .btn-danger.active { background: var(--meas); color: #000; box-shadow: 0 0 15px rgba(255,179,0,0.4); }
+
+        /* Responsive */
+        @media (max-width: 700px) { .btn-toolbar { flex-direction: column; } .btn-group { width: 100%; } button { flex: 1; } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <header>
+        <h1>Master Class: Curva de Fase</h1>
+        <p class="subtitle">Guía interactiva paso a paso para entender el tiempo en el sonido</p>
+    </header>
+
+    <section>
+        <h2><span class="icon">🎓</span> 1. El Concepto Clave</h2>
+        <p>
+            La curva de fase es uno de los parámetros más importantes para ajustar sistemas de sonido. Aunque parece compleja, se basa en una regla de oro que debes recordar siempre:
+        </p>
+        <div class="highlight-box">
+            "Fase es igual a Tiempo"
+        </div>
+        <p>
+            Para leer este gráfico, imagina que es un <strong>mapa</strong>:
+        </p>
+        <ul>
+            <li><strong>Horizontal (Eje X):</strong> Son las frecuencias (de graves a la izquierda a agudos a la derecha).</li>
+            <li><strong>Vertical (Eje Y):</strong> Es el "retraso" medido en ángulos (grados), repitiéndose en círculos de 360°.</li>
+        </ul>
+        <p>
+            Cuando una señal se retrasa, la gráfica se inclina hacia abajo. Cuanto más agudos son los sonidos (frecuencias altas), más rápido giran sus ciclos en ese mismo tiempo, creando una pendiente.
+        </p>
+    </section>
+
+    <section>
+        <h2><span class="icon">🎛️</span> 2. Laboratorio Interactivo</h2>
+        <p>
+            Vamos a experimentar. Mueve el control de <strong>Retraso</strong> y observa cómo cambia la gráfica y los datos.
+        </p>
+        
+        <div class="analogy-bar">
+            <div class="speed-indicator">
+                <span id="speedIcon" class="arrow">➡️</span>
+                <div>
+                    <div style="font-size:0.8rem; color:#888; font-weight:normal;">PENDIENTE</div>
+                    <span id="speedText" style="color:var(--green)">Plana (Alineado)</span>
+                </div>
+            </div>
+            <div style="text-align:right; font-size:0.9rem; color:#ccc;">
+                Observa cómo el retraso inclina la curva
+            </div>
+        </div>
+
+        <div class="sim-container">
+            <div class="y-label">FASE (Grados)</div>
+            <canvas id="phaseCanvas" height="380"></canvas>
+            <div style="text-align: center; font-size: 0.9rem; color: #aaa; margin-top: 5px; font-weight:bold;">FRECUENCIA (Hz)</div>
+        </div>
+
+        <div class="data-panel">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Frecuencia Clave</th>
+                        <th>Ciclos de Retraso</th>
+                        <th>Fase Resultante</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="col-freq"><span style="color:var(--green)">●</span> 500 Hz</td>
+                        <td class="col-data" id="c500">0.00</td>
+                        <td class="col-data" id="p500">0°</td>
+                        <td class="col-desc" id="s500">-</td>
+                    </tr>
+                    <tr>
+                        <td class="col-freq"><span style="color:var(--blue)">●</span> 1000 Hz</td>
+                        <td class="col-data" id="c1000">0.00</td>
+                        <td class="col-data" id="p1000">0°</td>
+                        <td class="col-desc" id="s1000">-</td>
+                    </tr>
+                    <tr>
+                        <td class="col-freq"><span style="color:var(--pink)">●</span> 2000 Hz</td>
+                        <td class="col-data" id="c2000">0.00</td>
+                        <td class="col-data" id="p2000">0°</td>
+                        <td class="col-desc" id="s2000">-</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="controls">
+            <div class="slider-group">
+                <label>
+                    ⏱ Retraso de Tiempo
+                    <span id="delayVal" class="readout">0.00 ms</span>
+                </label>
+                <input type="range" id="delaySlider" min="-2" max="2" step="0.01" value="0">
+                <p style="font-size:0.85rem; color:#888; margin-top:5px;">Izquierda: Adelanto (-) | Derecha: Retraso (+)</p>
+            </div>
+
+            <div class="btn-toolbar">
+                <div class="btn-group">
+                    <button id="btnLog" class="active">📊 Eje Log (Audio)</button>
+                    <button id="btnLin">📏 Eje Lineal (Mat)</button>
+                </div>
+                
+                <div class="btn-group">
+                    <button id="btnUnwrap">✂️ Desenrollar</button>
+                    <button id="btnPolarity" class="btn-danger">Ø Polaridad</button>
+                    <button id="btnReset">🔄 Reset</button>
+                </div>
+            </div>
+            
+            <p id="axisInfo" style="font-size:0.9rem; color:#bbb; margin:0; border-top:1px solid #555; padding-top:10px;">
+                <strong>Modo Logarítmico:</strong> Muestra la "curva" real comprimiendo los agudos, tal como los percibimos. Es el estándar en la industria.
+            </p>
+        </div>
+    </section>
+
+    <section>
+        <h2><span class="icon">🧠</span> 3. ¿Qué significan estos cambios?</h2>
+        
+        <h3>El Velocímetro (Interpretación de la Pendiente)</h3>
+        <p>
+            La pendiente actúa como un velocímetro. Nos indica la dirección del movimiento temporal:
+        </p>
+        <ul>
+            <li><strong>Pendiente Decreciente (Baja):</strong> Indica un <strong>retraso</strong>. La señal llega tarde. Cuanto más vertical es la caída, más lejos está el altavoz.</li>
+            <li><strong>Pendiente Creciente (Sube):</strong> Indica un <strong>adelanto</strong>. La señal llega antes que nuestra referencia (tiempo negativo).</li>
+        </ul>
+
+        <h3>¿Por qué la línea se rompe? (Dientes de Sierra)</h3>
+        <p>
+            La fase es circular. Imagina un reloj: después de las 12, vuelves a la 1. En audio, el límite suele ser $180^\circ$ o $360^\circ$.
+            Cuando ves esos cortes verticales, no es un error. Es que la fase ha dado una vuelta completa y el gráfico empieza de nuevo.
+            <br><em>Prueba el botón <strong>"Desenrollar" (Unwrap)</strong> arriba para ver la línea recta real sin cortes.</em>
+        </p>
+
+        <h3>Lineal vs. Logarítmico (La forma de la curva)</h3>
+        <p>
+            Si usas el botón <strong>"Eje Log"</strong>, verás esa forma curva característica que se ve en los analizadores profesionales (Smaart, REW). Esto ocurre porque comprimimos visualmente las frecuencias agudas a la derecha. Si cambias a <strong>"Eje Lineal"</strong>, verás que matemáticamente es una rampa recta perfecta.
+        </p>
+    </section>
+
+</div>
+
+<script>
+    const canvas = document.getElementById('phaseCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Elementos UI
+    const slider = document.getElementById('delaySlider');
+    const displayVal = document.getElementById('delayVal');
+    const axisInfo = document.getElementById('axisInfo');
+    
+    // Elementos Analogía
+    const speedIcon = document.getElementById('speedIcon');
+    const speedText = document.getElementById('speedText');
+
+    // Botones
+    const btnLog = document.getElementById('btnLog');
+    const btnLin = document.getElementById('btnLin');
+    const btnUnwrap = document.getElementById('btnUnwrap');
+    const btnPolarity = document.getElementById('btnPolarity');
+    const btnReset = document.getElementById('btnReset');
+
+    // Estado Global
+    let state = {
+        delay: 0.00,
+        isLog: true,     
+        unwrap: false,
+        polarity: 1      
+    };
+
+    // Configuración Frecuencias
+    const minFreq = 20;
+    const maxFreq = 20000; 
+    const points = [500, 1000, 2000];
+    const colors = { 500: '#00e676', 1000: '#2979ff', 2000: '#ff4081' };
+
+    function resize() {
+        canvas.width = canvas.parentElement.offsetWidth;
+        canvas.height = 380;
+        draw();
+    }
+    window.addEventListener('resize', resize);
+
+    // --- FUNCIONES DE MAPEO ---
+    function mapX(f, w) {
+        if(state.isLog) {
+            const minLog = Math.log10(minFreq);
+            const maxLog = Math.log10(maxFreq);
+            const valLog = Math.log10(Math.max(f, minFreq)); 
+            return ((valLog - minLog) / (maxLog - minLog)) * w;
+        } else {
+            return (f / maxFreq) * w;
+        }
+    }
+
+    function getFreqFromX(x, w) {
+        if(state.isLog) {
+            const minLog = Math.log10(minFreq);
+            const maxLog = Math.log10(maxFreq);
+            const range = maxLog - minLog;
+            return Math.pow(10, minLog + (x/w)*range);
+        } else {
+            return (x/w) * maxFreq;
+        }
+    }
+
+    // --- DIBUJADO PRINCIPAL ---
+    function draw() {
+        const w = canvas.width;
+        const h = canvas.height;
+        ctx.clearRect(0,0,w,h);
+
+        // 1. ESCALA VERTICAL (Y)
+        let rangeDeg = 360;
+        if(state.unwrap) {
+            const maxCycles = Math.abs(state.delay/1000) * maxFreq;
+            rangeDeg = Math.max(360, maxCycles * 360 * 1.2); 
+        }
+        const pxPerDeg = h / rangeDeg;
+        const centerY = state.unwrap ? 50 : h/2;
+
+        // 2. GRID Y EJES (Alto Contraste)
+        ctx.lineWidth = 1;
+        ctx.font = '11px Arial';
+        
+        // EJE Y (Grados)
+        const stepsY = [-2880, -1440, -720, -360, -180, 0, 180, 360, 720];
+        stepsY.forEach(deg => {
+            let y = centerY - (deg * pxPerDeg);
+            if(y>0 && y<h) {
+                // Línea 0 blanca brillante, el resto tenue
+                ctx.strokeStyle = (deg===0) ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.15)';
+                ctx.beginPath(); ctx.moveTo(40, y); ctx.lineTo(w, y); ctx.stroke();
+                
+                ctx.fillStyle = (deg===0) ? '#fff' : '#aaa'; 
+                ctx.textAlign='right'; ctx.fillText(deg+"°", 35, y+4);
+            }
+        });
+
+        // EJE X (Frecuencia)
+        let gridFreqs = [];
+        if(state.isLog) {
+            gridFreqs = [31, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
+        } else {
+            for(let f=2000; f<maxFreq; f+=2000) gridFreqs.push(f);
+        }
+
+        ctx.textAlign = 'center';
+        gridFreqs.forEach(f => {
+            let x = 40 + mapX(f, w-40);
+            let isKey = points.includes(f);
+            
+            ctx.strokeStyle = isKey ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.1)';
+            if(isKey) ctx.setLineDash([4, 4]); 
+            else ctx.setLineDash([]);
+            
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+            ctx.setLineDash([]); 
+
+            let label = f >= 1000 ? (f/1000)+"k" : f;
+            ctx.fillStyle = isKey ? '#fff' : '#777'; 
+            ctx.font = isKey ? 'bold 12px Arial' : '11px Arial';
+            ctx.fillText(label, x, h-5);
+        });
+
+        // 3. CURVA DE FASE (Neon Orange)
+        ctx.beginPath();
+        ctx.strokeStyle = '#ffb300'; 
+        ctx.lineWidth = 3;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#ffb300';
+
+        let prevY = null;
+        const startX = 40;
+
+        for(let px=0; px < (w-startX); px++) {
+            let x = startX + px;
+            let freq = getFreqFromX(px, w-startX);
+
+            // FÓRMULA
+            let polShift = (state.polarity === -1) ? 180 : 0;
+            let rawPhase = (-(state.delay/1000) * freq * 360) + polShift;
+
+            let plotPhase = rawPhase;
+            if(!state.unwrap) {
+                plotPhase = ((rawPhase + 180) % 360);
+                if(plotPhase < 0) plotPhase += 360;
+                plotPhase -= 180;
+            }
+
+            let y = centerY - (plotPhase * pxPerDeg);
+
+            if(px===0) ctx.moveTo(x, y);
+            else {
+                // Corte Sierra
+                if(!state.unwrap && Math.abs(y - prevY) > h/3) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            prevY = y;
+        }
+        ctx.stroke();
+        ctx.shadowBlur = 0; 
+
+        // 4. PUNTOS CLAVE (Circulos de color)
+        points.forEach(f => {
+            let x = 40 + mapX(f, w-40);
+            
+            let polShift = (state.polarity === -1) ? 180 : 0;
+            let rawPhase = (-(state.delay/1000) * f * 360) + polShift;
+            
+            let plotPhase = state.unwrap ? rawPhase : (((rawPhase + 180) % 360 + 360) % 360 - 180);
+            let y = centerY - (plotPhase * pxPerDeg);
+
+            ctx.fillStyle = colors[f];
+            ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = '#fff'; ctx.lineWidth=2; ctx.stroke();
+        });
+    }
+
+    // --- ACTUALIZAR DATOS UI ---
+    function updateData() {
+        points.forEach(f => {
+            let t = state.delay / 1000;
+            let cycles = t * f;
+            let totDeg = cycles * 360;
+            
+            let wDeg = totDeg % 360;
+            if(wDeg > 180) wDeg -= 360;
+            if(wDeg < -180) wDeg += 360;
+            
+            if(state.polarity === -1) {
+                wDeg = (wDeg + 180);
+                if(wDeg > 180) wDeg -= 360;
+            }
+
+            let dispPh = state.unwrap ? (totDeg + (state.polarity===-1?180:0)) : wDeg;
+
+            let st = "Alineado";
+            if(Math.abs(cycles) > 0.05) st = "Desfasado";
+            if(state.polarity === -1 && Math.abs(state.delay) < 0.01) st = "Invertido";
+            if(Math.abs(cycles) > 0.45 && Math.abs(cycles) < 0.55) st = "Cancelación";
+
+            document.getElementById(`c${f}`).innerText = cycles.toFixed(2);
+            document.getElementById(`p${f}`).innerText = (-dispPh).toFixed(0) + "°";
+            document.getElementById(`s${f}`).innerText = st;
+        });
+
+        // Update Slider Text
+        let prefix = state.delay > 0 ? "+" : "";
+        displayVal.innerText = prefix + state.delay.toFixed(2) + " ms";
+
+        // Update Velocímetro
+        if(Math.abs(state.delay) < 0.01) {
+            speedIcon.style.transform = "rotate(0deg)";
+            speedIcon.innerText = "➡️";
+            speedText.innerText = "Plana (Alineado)";
+            speedText.style.color = "var(--green)";
+        } else if(state.delay > 0) {
+            speedIcon.style.transform = "rotate(45deg)";
+            speedIcon.innerText = "↘️";
+            speedText.innerText = "Bajando (Retraso)";
+            speedText.style.color = "var(--meas)";
+        } else {
+            speedIcon.style.transform = "rotate(-45deg)";
+            speedIcon.innerText = "↗️";
+            speedText.innerText = "Subiendo (Adelanto)";
+            speedText.style.color = "var(--accent)";
+        }
+    }
+
+    // --- EVENTOS ---
+    slider.addEventListener('input', (e) => {
+        state.delay = parseFloat(e.target.value);
+        draw(); updateData();
+    });
+
+    btnLog.addEventListener('click', () => {
+        state.isLog = true;
+        btnLog.classList.add('active'); btnLin.classList.remove('active');
+        axisInfo.innerHTML = "<strong>Modo Logarítmico:</strong> Muestra la 'curva' real comprimiendo los agudos, tal como los percibimos. Es el estándar en audio.";
+        draw();
+    });
+
+    btnLin.addEventListener('click', () => {
+        state.isLog = false;
+        btnLin.classList.add('active'); btnLog.classList.remove('active');
+        axisInfo.innerHTML = "<strong>Modo Lineal:</strong> Muestra la relación matemática pura. Como el retraso es constante, la fase crece proporcionalmente (línea recta).";
+        draw();
+    });
+
+    btnUnwrap.addEventListener('click', () => {
+        state.unwrap = !state.unwrap;
+        btnUnwrap.classList.toggle('active');
+        draw(); updateData();
+    });
+
+    btnPolarity.addEventListener('click', () => {
+        state.polarity *= -1;
+        btnPolarity.classList.toggle('active');
+        draw(); updateData();
+    });
+
+    btnReset.addEventListener('click', () => {
+        state.delay = 0; slider.value = 0;
+        state.unwrap = false; btnUnwrap.classList.remove('active');
+        state.polarity = 1; btnPolarity.classList.remove('active');
+        draw(); updateData();
+    });
+
+    setTimeout(() => { resize(); updateData(); }, 100);
+
+</script>
+</body>
+</html>
