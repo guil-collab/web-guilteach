@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transposición de Samples — Semitonos (Ableton)</title>
+    <style>
+        :root {
+            --bg: #0d0f10;
+            --panel: #121416;
+            --ink: #e9edf1;
+            --muted: #9aa3ad;
+            --accent: #73a7ff;
+            --accent-2: #2563eb;
+            --btn: #171a1e;
+            --shadow: 0 6px 24px rgba(0,0,0,.35);
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--ink);
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: var(--panel);
+            padding: 2rem;
+            border-radius: 18px;
+            box-shadow: var(--shadow);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--accent);
+        }
+
+        p.description {
+            color: var(--muted);
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+        }
+
+        .section {
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            text-align: left;
+        }
+
+        .section-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: block;
+            color: var(--accent);
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        select, button {
+            background: var(--btn);
+            border: 1px solid #232831;
+            color: var(--ink);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .radio-label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+        }
+
+        .actions {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 10px;
+            margin-top: 2rem;
+        }
+
+        .btn-calc {
+            background: var(--accent-2);
+            font-weight: bold;
+        }
+
+        #result {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            border-radius: 12px;
+            background: rgba(115, 167, 255, 0.1);
+            border: 1px solid var(--accent);
+            font-size: 1.1rem;
+            display: none;
+        }
+
+        .footer {
+            margin-top: 2rem;
+            font-size: 0.8rem;
+            color: var(--muted);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Transposición de Samples</h1>
+    <p class="description">Calcula cuántos semitonos mover en el control Transpose de Ableton Live.</p>
+
+    <div class="section">
+        <span class="section-title">Tonalidad objetivo (Proyecto)</span>
+        <div class="controls">
+            <select id="targetNote">
+                <option value="0">Do / C</option>
+                <option value="1">Do# / C#</option>
+                <option value="2">Re / D</option>
+                <option value="3">Re# / D#</option>
+                <option value="4">Mi / E</option>
+                <option value="5">Fa / F</option>
+                <option value="6">Fa# / F#</option>
+                <option value="7">Sol / G</option>
+                <option value="8">Sol# / G#</option>
+                <option value="9">La / A</option>
+                <option value="10">La# / A#</option>
+                <option value="11">Si / B</option>
+            </select>
+            <div class="radio-group">
+                <label class="radio-label"><input type="radio" name="targetMode" value="major" checked> Mayor</label>
+                <label class="radio-label"><input type="radio" name="targetMode" value="minor"> Menor</label>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <span class="section-title">Tonalidad del sample (Original)</span>
+        <div class="controls">
+            <select id="originalNote">
+                <option value="0">Do / C</option>
+                <option value="1">Do# / C#</option>
+                <option value="2">Re / D</option>
+                <option value="3">Re# / D#</option>
+                <option value="4">Mi / E</option>
+                <option value="5">Fa / F</option>
+                <option value="6">Fa# / F#</option>
+                <option value="7">Sol / G</option>
+                <option value="8">Sol# / G#</option>
+                <option value="9">La / A</option>
+                <option value="10">La# / A#</option>
+                <option value="11">Si / B</option>
+            </select>
+            <div class="radio-group">
+                <label class="radio-label"><input type="radio" name="originalMode" value="major" checked> Mayor</label>
+                <label class="radio-label"><input type="radio" name="originalMode" value="minor"> Menor</label>
+            </div>
+        </div>
+    </div>
+
+    <div class="actions">
+        <button class="btn-calc" onclick="calculate()">Calcular semitonos</button>
+        <button onclick="reset()">Reiniciar</button>
+    </div>
+
+    <div id="result">Selecciona una tonalidad y pulsa Calcular.</div>
+
+    <div class="footer">Hecho por GuilTeach</div>
+</div>
+
+<script>
+    function calculate() {
+        const targetNote = parseInt(document.getElementById('targetNote').value);
+        const originalNote = parseInt(document.getElementById('originalNote').value);
+        const targetMode = document.querySelector('input[name="targetMode"]:checked').value;
+        const originalMode = document.querySelector('input[name="originalMode"]:checked').value;
+
+        // Ajuste por modo (relativos mayor/menor)
+        // Si uno es menor, lo tratamos como su relativo mayor para simplificar el cálculo de distancia
+        // La distancia entre una escala menor y su relativo mayor es de 3 semitonos
+        let tAdj = targetNote;
+        let oAdj = originalNote;
+
+        if (targetMode === 'minor') tAdj = (targetNote + 3) % 12;
+        if (originalMode === 'minor') oAdj = (originalNote + 3) % 12;
+
+        let diff = tAdj - oAdj;
+
+        // Buscamos el camino más corto (hacia arriba o hacia abajo)
+        if (diff > 6) diff -= 12;
+        if (diff < -6) diff += 12;
+
+        const resultDiv = document.getElementById('result');
+        resultDiv.style.display = 'block';
+
+        let message = "";
+        if (diff === 0) {
+            message = "<strong>¡Ya están en la misma tonalidad!</strong><br>No necesitas transponer (0 semitonos).";
+        } else {
+            const direction = diff > 0 ? "subir" : "bajar";
+            message = `Debes <strong>${direction} ${Math.abs(diff)}</strong> semitonos en Ableton Live.`;
+        }
+
+        // Aviso si los modos son distintos
+        if (targetMode !== originalMode) {
+            message += "<br><small style='color: #ffcc00; display: block; margin-top: 10px;'>⚠️ Nota: Estás mezclando Mayor con Menor. Aunque la nota base encaje, el color armónico será distinto.</small>";
+        }
+
+        resultDiv.innerHTML = message;
+    }
+
+    function reset() {
+        document.getElementById('result').style.display = 'none';
+        document.getElementById('targetNote').value = "0";
+        document.getElementById('originalNote').value = "0";
+    }
+</script>
+
+</body>
+</html>
