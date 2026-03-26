@@ -196,7 +196,7 @@ function selectMode(m, L, W, H) {
         transparent: true, uniforms: { nx: {value: m.nx}, ny: {value: m.ny}, nz: {value: m.nz}, L: {value: L}, H: {value: H}, W: {value: W} },
         vertexShader: `varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
         fragmentShader: `varying vec3 vP; uniform float nx, ny, nz, L, H, W; void main() {
-            float p = cos(nx* 3.14159 * (vP.x/L + 0.5)) * cos(ny * 3.14159 * (vP.y/H + 0.5)) * cos(nz * 3.14159 * (vP.z/W + 0.5));
+            float p = cos(nx * 3.14159 * (vP.x/L + 0.5)) * cos(ny * 3.14159 * (vP.y/H + 0.5)) * cos(nz * 3.14159 * (vP.z/W + 0.5));
             vec3 col = p > 0.0 ? vec3(1.0, 0.0, 0.0) : vec3(0.0, 0.0, 1.0);
             gl_FragColor = vec4(col, abs(p) * 0.7);
         }`
@@ -207,7 +207,7 @@ function selectMode(m, L, W, H) {
 function updateMicAudio() {
     if(!activeMode || !audioCtx) return;
     const L = parseFloat(document.getElementById('dimL').value), W = parseFloat(document.getElementById('dimW').value), H = parseFloat(document.getElementById('dimH').value);
-    const xN = (mic.position.x = L) + 0.5, yN = (mic.position.y / H) + 0.5, zN = (mic.position.z / W) + 0.5;
+    const xN = (mic.position.x / L) + 0.5, yN = (mic.position.y / H) + 0.5, zN = (mic.position.z / W) + 0.5;
     const p = Math.abs(Math.cos(activeMode.nx * Math.PI * xN) * Math.cos(activeMode.ny * Math.PI * yN) * Math.cos(activeMode.nz * Math.PI * zN));
     const db = 20 * Math.log10(Math.max(p, 0.001));
     gain.gain.setTargetAtTime(p * 0.2, audioCtx.currentTime, 0.015);
@@ -220,8 +220,9 @@ function drawDistChart(fs) {
     distChart = new Chart(ctx, {
         type: 'scatter',
         data: { datasets: [{ data: modesList.map(m => ({ x: m.f, y: 1 })) }] },
-        options: { responsive: true, maintainAspectRatio: false,
-            scales: { x: { type: 'l8: { type: 'linear', min: 20, max: fs + 20 } },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: { x: { type: 'linear', min: 20, max: fs + 20 } },
             plugins: { 
                 legend: { display: false },
                 tooltip: {
