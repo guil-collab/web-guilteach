@@ -2,148 +2,318 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Calculadora Interactiva de Curvas NC y NR</title>
+    <title>Analizador Acústico - Comparativa de Respuesta Plana</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/DragControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --primary: #2c3e50; --accent: #e67e22; --light: #ecf0f1; }
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.15); width: 95%; max-width: 1200px; }
-        header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid var(--light); padding-bottom: 10px; }
-        .layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; }
-        .inputs { background: var(--light); padding: 15px; border-radius: 8px; }
-        .input-row { display: flex; justify-content: space-between; margin-bottom: 8px; align-items: center; }
-        input { width: 60px; padding: 6px; border: 1px solid #bdc3c7; border-radius: 4px; text-align: center; font-weight: bold; }
-        .selector { margin-bottom: 15px; padding: 10px; background: #fff; border-radius: 5px; }
-        button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; }
-        button:hover { background: #34495e; }
-        .chart-box { height: 600px; background: white; padding: 10px; border: 1px solid #ddd; border-radius: 8px; }
-        .result-info { margin-top: 15px; padding: 15px; background: #d5f5e3; border-radius: 6px; text-align: center; border-left: 5px solid #27ae60; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #000; color: #fff; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        .layout { display: grid; grid-template-columns: 350px 1fr; gap: 10px; padding: 10px; flex: 1; overflow: hidden; }
+        .controls { background: #111; padding: 15px; border-radius: 8px; border: 1px solid #222; overflow-y: auto; display: flex; flex-direction: column; }
+        input { width: 100%; padding: 8px; margin: 5px 0; background: #000; border: 1px solid #444; color: #0f0; border-radius: 4px; box-sizing: border-box; font-family: monospace; }
+        label { font-size: 0.75em; color: #888; text-transform: uppercase; margin-top: 10px; }
+        button { width: 100%; padding: 12px; margin: 15px 0; cursor: pointer; font-weight: bold; border-radius: 4px; border: none; }
+        #calcBtn { background: #007bff; color: white; }
+        #audioBtn { background: #444; color: white; width: 140px; }
+        #audioBtn.active { background: #0c0; color: #000; }
+        .table-wrapper { flex: 1; min-height: 200px; overflow-y: auto; margin-top: 10px; border: 1px solid #222; background: #050505; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.8em; }
+        th, td { border: 1px solid #222; padding: 8px; text-align: left; }
+        th { background: #1a1a1a; color: #0f0; position: sticky; top: 0; }
+        tr.selected { background: #0c3d0c !important; color: #0f0; }
+
+        .viewport-scroll { background: #000; border: 1px solid #222; border-radius: 8px; overflow-y: auto; display: flex; flex-direction: column; position: relative; }
+        #canvas3d { width: 100%; height: 85vh; background: #000; flex-shrink: 0; }
+        .charts-area { background: #fff; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; gap: 20px; }
+        .chart-wrapper { height: 250px; background: #fdfdfd; border-radius: 4px; padding: 15px; border: 1px solid #ddd; }
+        
+        .hud { position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.9); padding: 15px; border-radius: 6px; border-left: 5px solid #0f0; font-family: monospace; z-index: 5; pointer-events: none; min-width: 280px;}
+        .coords-panel { margin-top: 10px; pointer-events: auto; }
+        .coords-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 5px; }
+        .coords-grid label { font-size: 9px; color: #0f0; }
+        .coords-grid input { padding: 4px; font-size: 13px; text-align: center; border: 1px solid #0f0; background: #111; color: #0f0; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <header>
-        <h1>Evaluador Acústico: NC vs NR</h1>
-        <p>Introduce los datos del problema y observa qué curva de referencia se supera.</p>
-    </header>
+<div class="layout">
+    <div class="controls">
+        <h3 style="margin:0 0 10px 0; color: #0f0;">Acústica de Sala</h3>
+        <label>Largo (X) m</label> <input type="number" id="dimL" value="5.2" step="0.1">
+        <label>Ancho (Z) m</label> <input type="number" id="dimW" value="4.1" step="0.1">
+        <label>Alto (Y) m</label> <input type="number" id="dimH" value="2.8" step="0.1">
+        <label>RT60 (s)</label> <input type="number" id="rt60" value="0.45" step="0.05">
+        <button id="calcBtn" onclick="runSimulation()">RECALCULAR</button>
+        <div class="table-wrapper">
+            <table>
+                <thead><tr><th>Modo</th><th>Hz</th><th>Tipo</th></tr></thead>
+                <tbody id="table-body"></tbody>
+            </table>
+        </div>
+    </div>
 
-    <div class="layout">
-        <div class="inputs">
-            <div class="selector">
-                <label><b>Estándar a evaluar:</b></label><br>
-                <input type="radio" name="mode" value="NC" checked onchange="toggleMode()"> NC (Noise Criteria)<br>
-                <input type="radio" name="mode" value="NR" onchange="toggleMode()"> NR (Noise Rating)
-            </div>
-
-            <h3>Niveles Medidos (dB)</h3>
-            <div id="fields"></div>
-            <button onclick="processData()">CALCULAR CURVA</button>
-
-            <div class="result-info">
-                <strong>Resultado Estimado:</strong><br>
-                <span id="final-result" style="font-size: 24px; color: #c0392b;">--</span>
+    <div class="viewport-scroll">
+        <div class="hud">
+            <div id="schroeder-display" style="color: #00d4ff; font-weight: bold;">Fs: -- Hz</div>
+            <div id="mic-display" style="color: #0f0; font-weight: bold; margin: 5px 0;">Presión Local: 0.0 dB</div>
+            <div class="coords-panel">
+                <div class="coords-grid">
+                    <div><label>LARGO (X)</label><input type="number" id="mX" step="0.01" oninput="manualMicMove()"></div>
+                    <div><label>ANCHO (Z)</label><input type="number" id="mZ" step="0.01" oninput="manualMicMove()"></div>
+                    <div><label>ALTO (Y)</label><input type="number" id="mY" step="0.01" oninput="manualMicMove()"></div>
+                </div>
             </div>
         </div>
-
-        <div class="chart-box">
-            <canvas id="mainChart"></canvas>
+        <div style="position:absolute; top:15px; right:15px; z-index:10">
+            <button id="audioBtn" onclick="toggleAudio()">AUDIO OFF</button>
+        </div>
+        <div id="canvas3d"></div>
+        <div class="charts-area">
+            <div class="chart-wrapper">
+                <h4 style="color:#000; margin:0 0 10px 0;">DISTRIBUCIÓN MODAL</h4>
+                <canvas id="distChart"></canvas>
+            </div>
+            <div class="chart-wrapper">
+                <h4 style="color:#000; margin:0 0 10px 0;">COMPARATIVA: ESCUCHA PLANA VS. RESPUESTA REAL</h4>
+                <canvas id="respChart"></canvas>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-    // Frecuencias para NC (63 a 8k) y NR (31.5 a 8k)
-    const freqsNC = [63, 125, 250, 500, 1000, 2000, 4000, 8000];
-    const freqsNR = [31.5, 63, 125, 250, 500, 1000, 2000, 4000, 8000];
-    
-    // Datos de referencia simplificados (Puntos de las curvas de las imágenes)
-    const curvesNC = {
-        20: [51, 40, 33, 26, 22, 19, 17, 16], 25: [54, 44, 37, 31, 27, 24, 22, 21],
-        30: [57, 48, 41, 35, 31, 29, 28, 27], 35: [60, 52, 45, 40, 36, 34, 33, 32],
-        40: [64, 56, 50, 45, 41, 39, 38, 37], 45: [67, 60, 54, 49, 46, 44, 43, 42],
-        50: [71, 64, 58, 54, 51, 49, 48, 47], 55: [74, 67, 62, 58, 56, 54, 53, 52],
-        60: [77, 71, 67, 63, 61, 59, 58, 57], 65: [80, 75, 71, 68, 66, 64, 63, 62],
-        70: [83, 79, 75, 72, 71, 70, 69, 68]
-    };
+let scene, camera, renderer, controls, dragControls, mic, roomBox, modeVol, distChart, respChart;
+let audioCtx, osc, gain;
+let modesList = [];
+let activeMode = null;
+const C = 343;
 
-    const curvesNR = {}; 
-    // Generación dinámica de curvas NR basadas en la fórmula ISO L = a + b*NR
-    // a y b son constantes por frecuencia. Aquí usamos los valores de tu gráfica:
-    [0, 10, 20, 30, 40, 50, 60, 70, 75].forEach(val => {
-        curvesNR[val] = [val+55, val+46, val+35, val+28, val+22, val+20, val+18, val+16, val+14].map(x => x-20); // Ajuste visual
+function init() {
+    const container = document.getElementById('canvas3d');
+    const layout = document.querySelector('.viewport-scroll');
+
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(45, layout.clientWidth / container.clientHeight, 0.1, 1000);
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(layout.clientWidth, container.clientHeight);
+    container.appendChild(renderer.domElement);
+
+    camera.position.set(10, 8, 10);
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+    mic = new THREE.Mesh(new THREE.SphereGeometry(0.12, 32, 32), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    scene.add(mic);
+
+    dragControls = new THREE.DragControls([mic], camera, renderer.domElement);
+    dragControls.addEventListener('dragstart', () => controls.enabled = false);
+    dragControls.addEventListener('dragend', () => controls.enabled = true);
+    dragControls.addEventListener('drag', () => {
+        const L = parseFloat(document.getElementById('dimL').value), W = parseFloat(document.getElementById('dimW').value), H = parseFloat(document.getElementById('dimH').value);
+        mic.position.x = Math.max(-L/2, Math.min(L/2, mic.position.x));
+        mic.position.z = Math.max(-W/2, Math.min(W/2, mic.position.z));
+        mic.position.y = Math.max(-H/2, Math.min(H/2, mic.position.y));
+        syncInputsWithMic();
+        updateMicAudio();
+        updateResponseChart();
     });
 
-    let chart;
-    let currentMode = 'NC';
+    window.addEventListener('resize', onResize);
+    runSimulation();
+    animate();
+}
 
-    function createFields() {
-        const container = document.getElementById('fields');
-        container.innerHTML = '';
-        const list = currentMode === 'NC' ? freqsNC : freqsNR;
-        list.forEach(f => {
-            container.innerHTML += `
-                <div class="input-row">
-                    <label>${f} Hz:</label>
-                    <input type="number" class="val-input" data-f="${f}" value="${f === 250 ? 77 : 40}">
-                </div>`;
+function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+}
+
+function runSimulation() {
+    const L = parseFloat(document.getElementById('dimL').value), W = parseFloat(document.getElementById('dimW').value), H = parseFloat(document.getElementById('dimH').value), rt = parseFloat(document.getElementById('rt60').value);
+    const fs = 2000 * Math.sqrt(rt / (L * W * H));
+    document.getElementById('schroeder-display').innerText = `Fs: ${fs.toFixed(1)} Hz`;
+
+    if(roomBox) scene.remove(roomBox);
+    roomBox = new THREE.Mesh(new THREE.BoxGeometry(L, H, W), new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true, transparent: true, opacity: 0.2 }));
+    scene.add(roomBox);
+
+    modesList = [];
+    for(let nx=0; nx<=10; nx++) {
+        for(let ny=0; ny<=10; ny++) {
+            for(let nz=0; nz<=10; nz++) {
+                if(nx+ny+nz === 0) continue;
+                const f = (C/2) * Math.sqrt((nx/L)**2 + (ny/H)**2 + (nz/W)**2);
+                if(f <= fs + 20) {
+                    let z = [nx,ny,nz].filter(v => v===0).length;
+                    modesList.push({ nx, ny, nz, f, type: z===2?'Axial':(z===1?'Tang.':'Obl.') });
+                }
+            }
+        }
+    }
+    modesList.sort((a,b) => a.f - b.f);
+    mic.position.set(0,0,0);
+    syncInputsWithMic();
+    renderTable(L, W, H);
+    drawDistChart(fs);
+    updateResponseChart();
+}
+
+function syncInputsWithMic() {
+    const L = parseFloat(document.getElementById('dimL').value), H = parseFloat(document.getElementById('dimH').value), W = parseFloat(document.getElementById('dimW').value);
+    document.getElementById('mX').value = (mic.position.x + L/2).toFixed(2);
+    document.getElementById('mZ').value = (mic.position.z + W/2).toFixed(2);
+    document.getElementById('mY').value = (mic.position.y + H/2).toFixed(2);
+}
+
+function manualMicMove() {
+    const L = parseFloat(document.getElementById('dimL').value), H = parseFloat(document.getElementById('dimH').value), W = parseFloat(document.getElementById('dimW').value);
+    mic.position.x = (parseFloat(document.getElementById('mX').value) || 0) - L/2;
+    mic.position.z = (parseFloat(document.getElementById('mZ').value) || 0) - W/2;
+    mic.position.y = (parseFloat(document.getElementById('mY').value) || 0) - H/2;
+    updateMicAudio();
+    updateResponseChart();
+}
+
+function renderTable(L, W, H) {
+    const body = document.getElementById('table-body');
+    body.innerHTML = "";
+    modesList.forEach(m => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${m.nx},${m.nz},${m.ny}</td><td>${m.f.toFixed(1)}</td><td>${m.type}</td>`;
+        tr.onclick = () => { document.querySelectorAll('tr').forEach(r => r.classList.remove('selected')); tr.classList.add('selected'); selectMode(m, L, W, H); };
+        body.appendChild(tr);
+    });
+}
+
+function selectMode(m, L, W, H) {
+    activeMode = m;
+    if(audioCtx) osc.frequency.setTargetAtTime(m.f, audioCtx.currentTime, 0.05);
+    updateMicAudio();
+    if(modeVol) scene.remove(modeVol);
+    const geometry = new THREE.BoxGeometry(L, H, W, 32, 32, 32);
+    const material = new THREE.ShaderMaterial({
+        transparent: true, uniforms: { nx: {value: m.nx}, ny: {value: m.ny}, nz: {value: m.nz}, L: {value: L}, H: {value: H}, W: {value: W} },
+        vertexShader: `varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+        fragmentShader: `varying vec3 vP; uniform float nx, ny, nz, L, H, W; void main() {
+            float p = cos(nx* 3.14159 * (vP.x/L + 0.5)) * cos(ny * 3.14159 * (vP.y/H + 0.5)) * cos(nz * 3.14159 * (vP.z/W + 0.5));
+            vec3 col = p > 0.0 ? vec3(1.0, 0.0, 0.0) : vec3(0.0, 0.0, 1.0);
+            gl_FragColor = vec4(col, abs(p) * 0.7);
+        }`
+    });
+    modeVol = new THREE.Mesh(geometry, material); scene.add(modeVol);
+}
+
+function updateMicAudio() {
+    if(!activeMode || !audioCtx) return;
+    const L = parseFloat(document.getElementById('dimL').value), W = parseFloat(document.getElementById('dimW').value), H = parseFloat(document.getElementById('dimH').value);
+    const xN = (mic.position.x = L) + 0.5, yN = (mic.position.y / H) + 0.5, zN = (mic.position.z / W) + 0.5;
+    const p = Math.abs(Math.cos(activeMode.nx * Math.PI * xN) * Math.cos(activeMode.ny * Math.PI * yN) * Math.cos(activeMode.nz * Math.PI * zN));
+    const db = 20 * Math.log10(Math.max(p, 0.001));
+    gain.gain.setTargetAtTime(p * 0.2, audioCtx.currentTime, 0.015);
+    document.getElementById('mic-display').innerText = `Presión Local: ${db.toFixed(1)} dB`;
+}
+
+function drawDistChart(fs) {
+    const ctx = document.getElementById('distChart').getContext('2d');
+    if(distChart) distChart.destroy();
+    distChart = new Chart(ctx, {
+        type: 'scatter',
+        data: { datasets: [{ data: modesList.map(m => ({ x: m.f, y: 1 })) }] },
+        options: { responsive: true, maintainAspectRatio: false,
+            scales: { x: { type: 'l8: { type: 'linear', min: 20, max: fs + 20 } },
+            plugins: { 
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => {
+                            const m = modesList[context.dataIndex];
+                            return `Modo: ${m.nx},${m.nz},${m.ny} | ${m.f.toFixed(1)} Hz`;
+                        }
+                    }
+                }
+            }
+        },
+        plugins: [{
+            beforeDraw: (chart) => {
+                const {ctx, chartArea, scales: {x}} = chart;
+                modesList.forEach(m => {
+                    ctx.beginPath(); ctx.strokeStyle = m.type === 'Axial' ? '#f00' : '#8a2be2';
+                    ctx.lineWidth = m.type === 'Axial' ? 2 : 1;
+                    ctx.moveTo(x.getPixelForValue(m.f), chartArea.bottom); ctx.lineTo(x.getPixelForValue(m.f), chartArea.top + (m.type === 'Axial' ? 0 : 30)); ctx.stroke();
+                });
+            }
+        }]
+    });
+}
+
+function updateResponseChart() {
+    const ctx = document.getElementById('respChart').getContext('2d');
+    const L = parseFloat(document.getElementById('dimL').value), W = parseFloat(document.getElementById('dimW').value), H = parseFloat(document.getElementById('dimH').value);
+    const xN = (mic.position.x / L) + 0.5, yN = (mic.position.y / H) + 0.5, zN = (mic.position.z / W) + 0.5;
+
+    const curveData = [];
+    const flatLine = [];
+    const fs = parseFloat(document.getElementById('schroeder-display').innerText.split(' ')[1]);
+    const maxF = fs + 20;
+
+    for (let f = 20; f <= maxF; f += 1) {
+        let totalP = 0;
+        modesList.forEach(m => {
+            const p = Math.cos(m.nx * Math.PI * xN) * Math.cos(m.ny * Math.PI * yN) * Math.cos(m.nz * Math.PI * zN);
+            const weight = 1 / (1 + Math.pow((f - m.f) / 1.5, 2)); 
+            totalP += Math.abs(p) * weight;
         });
+        const dbValue = 20 * Math.log10(Math.max(totalP, 0.01));
+        curveData.push({ x: f, y: dbValue });
+        flatLine.push({ x: f, y: 0 }); // Respuesta Plana Ideal
     }
 
-    function toggleMode() {
-        currentMode = document.querySelector('input[name="mode"]:checked').value;
-        createFields();
-        processData();
-    }
-
-    function processData() {
-        const inputs = document.querySelectorAll('.val-input');
-        const userValues = Array.from(inputs).map(i => parseFloat(i.value));
-        const labels = currentMode === 'NC' ? freqsNC : freqsNR;
-        const refCurves = currentMode === 'NC' ? curvesNC : curvesNR;
-
-        // Determinar resultado
-        let maxFound = 0;
-        Object.keys(refCurves).forEach(level => {
-            userValues.forEach((v, idx) => {
-                if (v >= refCurves[level][idx]) maxFound = Math.max(maxFound, level);
-            });
-        });
-
-        document.getElementById('final-result').innerText = currentMode + "-" + maxFound;
-
-        updateChart(labels, refCurves, userValues);
-    }
-
-    function updateChart(labels, refCurves, userData) {
-        if (chart) chart.destroy();
-        const datasets = [];
-
-        // Añadir curvas de referencia
-        Object.keys(refCurves).forEach(key => {
-            datasets.push({
-                label: key, data: refCurves[key], borderColor: '#bdc3c7', borderWidth: 1, pointRadius: 0, fill: false
-            });
-        });
-
-        // Añadir datos del alumno
-        datasets.push({
-            label: 'MEDICIÓN ACTUAL', data: userData, borderColor: '#e67e22', borderWidth: 5, pointRadius: 6, pointBackgroundColor: '#e67e22', fill: false, zIndex: 10
-        });
-
-        const ctx = document.getElementById('mainChart').getContext('2d');
-        chart = new Chart(ctx, {
+    if(respChart) {
+        respChart.data.datasets[0].data = curveData;
+        respChart.data.datasets[1].data = flatLine;
+        respChart.update('none');
+    } else {
+        respChart = new Chart(ctx, {
             type: 'line',
-            data: { labels: labels.map(l => l + 'Hz'), datasets: datasets },
+            data: { datasets: [
+                { label: 'Respuesta Real', data: curveData, borderColor: '#0f0', borderWidth: 2, pointRadius: 0, fill: false, tension: 0.1 },
+                { label: 'Escucha Plana (Ideal)', data: flatLine, borderColor: '#f00', borderWidth: 1, borderDash: [5, 5], pointRadius: 0, fill: false }
+            ] },
             options: {
                 responsive: true, maintainAspectRatio: false,
-                scales: { y: { min: 0, max: 100, title: {display:true, text:'dB'} } },
-                plugins: { legend: { display: false } }
+                scales: { 
+                    x: { type: 'linear', min: 20, title: {display: true, text: 'Hz'} }, 
+                    y: { min: -40, max: 10, title: {display: true, text: 'dB'} } 
+                },
+                plugins: { legend: { display: true, position: 'bottom' } }
             }
         });
     }
+}
 
-    window.onload = toggleMode;
+function toggleAudio() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        osc = audioCtx.createOscillator(); gain = audioCtx.createGain();
+        osc.type = 'sine'; gain.gain.value = 0;
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start();
+    }
+    const btn = document.getElementById('audioBtn');
+    if (audioCtx.state === 'suspended') { audioCtx.resume(); btn.innerText = "AUDIO ON"; btn.classList.add('active'); }
+    else { audioCtx.suspend(); btn.innerText = "AUDIO OFF"; btn.classList.remove('active'); }
+}
+
+function onResize() {
+    const layout = document.querySelector('.viewport-scroll');
+    const container = document.getElementById('canvas3d');
+    camera.aspect = layout.clientWidth / container.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(layout.clientWidth, container.clientHeight);
+}
+
+window.onload = init;
 </script>
 </body>
 </html>
