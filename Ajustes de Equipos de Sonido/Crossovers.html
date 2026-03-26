@@ -143,8 +143,13 @@
 
         @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
     </style>
-</head>
-<body>
+<style id="gt-theme">
+body{background:#111827!important;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;padding-top:48px!important;}
+#gt-nav{position:fixed;top:0;left:0;right:0;z-index:9999;height:44px;background:rgba(10,16,30,0.97);backdrop-filter:blur(10px);display:flex;align-items:center;padding:0 20px;border-bottom:1px solid rgba(100,140,255,0.15);box-sizing:border-box;}
+#gt-nav a{color:#7eb8ff;text-decoration:none;font-size:14px;font-weight:500;letter-spacing:0.3px;font-family:'Segoe UI',system-ui,sans-serif;}
+#gt-nav a:hover{color:#a8d0ff;}
+</style></head>
+<body><nav id="gt-nav"><a href="https://guilteach.com">← GuilTeach</a></nav>
 
 <div class="container">
     <header>
