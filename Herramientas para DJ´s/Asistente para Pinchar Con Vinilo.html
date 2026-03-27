@@ -466,30 +466,29 @@ body{background:#111827!important;font-family:'Segoe UI',system-ui,-apple-system
   #gt-nav a{font-size:12px!important;}
   h1{display:none!important;}
   .footer-chip{display:none!important;}
-  .wrap{display:grid!important;grid-template-columns:1fr 1fr!important;margin:0!important;padding:0 6px!important;gap:6px!important;box-sizing:border-box!important;max-width:none!important;overflow:hidden!important;transform-origin:top left!important;}
-  /* Deck containers */
-  .deck{padding:5px 7px!important;border-radius:10px!important;}
-  .deck h2{font-size:9px!important;margin:0 0 3px!important;letter-spacing:.1em!important;}
-  /* Readouts: UNO ENCIMA DEL OTRO (single column) */
-  .readouts{display:grid!important;grid-template-columns:1fr!important;gap:3px!important;margin:3px 0!important;}
+  /* Wrap: grid 2 col, stretch so both decks same height */
+  .wrap{display:grid!important;grid-template-columns:1fr 1fr!important;align-items:stretch!important;margin:0!important;padding:0 6px!important;gap:6px!important;box-sizing:border-box!important;max-width:none!important;overflow:hidden!important;}
+  /* Deck: flex column so rail always pushed to bottom at same level */
+  .deck{display:flex!important;flex-direction:column!important;padding:5px 7px!important;border-radius:10px!important;box-sizing:border-box!important;}
+  .deck h2{font-size:9px!important;margin:0 0 3px!important;letter-spacing:.1em!important;flex-shrink:0!important;}
+  /* Stat: flex column, grows to fill deck */
+  .stat{flex:1!important;min-height:0!important;display:flex!important;flex-direction:column!important;font-size:10px!important;}
+  /* Readouts stacked vertically */
+  .readouts{display:grid!important;grid-template-columns:1fr!important;gap:3px!important;margin:3px 0!important;flex-shrink:0!important;}
   .tempo-box,.orig-box{padding:4px 7px!important;gap:3px!important;border-radius:8px!important;}
   .tempo-title{font-size:8px!important;}
   .tempo-value{font-size:clamp(11px,1.8vw,14px)!important;}
-  .tempoNow{font-size:inherit!important;}
-  /* TAP + QUARTZ LOCK */
   .orig-top{gap:4px!important;}
   .tap-btn{font-size:9px!important;padding:4px 7px!important;border-radius:7px!important;}
-  .chip{font-size:8px!important;padding:3px 6px!important;gap:3px!important;}
-  /* BPM edit row */
-  .bpm-edit{margin:2px 0!important;gap:4px!important;}
+  .chip{font-size:8px!important;padding:3px 6px!important;}
+  .bpm-edit{margin:2px 0!important;gap:4px!important;flex-shrink:0!important;}
   .btn{padding:3px 7px!important;font-size:10px!important;}
-  /* Rails: más anchos y más largos */
-  .rail-wrap{min-height:auto!important;gap:10px!important;margin:4px 0 3px!important;flex:1!important;align-items:stretch!important;}
-  .rail{width:38px!important;height:100%!important;border-radius:10px!important;}
-  .rail .edge{left:4px!important;right:4px!important;top:6px!important;bottom:6px!important;border-radius:6px!important;}
+  /* Rail-wrap: flex:1 so it fills remaining space equally in both decks */
+  .rail-wrap{flex:1!important;min-height:0!important;min-width:0!important;display:flex!important;align-items:stretch!important;justify-content:center!important;gap:10px!important;margin:4px 0 0!important;}
+  /* Rails: wider (55px) and full height of rail-wrap */
+  .rail{width:55px!important;height:auto!important;min-height:0!important;border-radius:12px!important;flex:0 0 55px!important;}
+  .rail .edge{left:5px!important;right:5px!important;top:6px!important;bottom:6px!important;border-radius:7px!important;}
   .rail .endmark{font-size:7px!important;left:4px!important;right:4px!important;}
-  /* Stat text */
-  .stat{font-size:10px!important;display:flex!important;flex-direction:column!important;}
 }
 </style></head>
 <body><nav id="gt-nav"><a href="https://guilteach.com#djs">← GuilTeach</a></nav><div id="gt-rotate-msg"><div class="gt-icon">📱 ↻</div><p>Gira el dispositivo<br>para usar esta herramienta</p></div>
