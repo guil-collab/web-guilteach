@@ -460,13 +460,36 @@ body{background:#111827!important;font-family:'Segoe UI',system-ui,-apple-system
 #gt-rotate-msg{display:none;position:fixed;inset:0;z-index:99999;background:#111827;color:#e2e8f0;flex-direction:column;align-items:center;justify-content:center;font-family:'Segoe UI',system-ui,sans-serif;text-align:center;padding:30px;}
 #gt-rotate-msg .gt-icon{font-size:56px;margin-bottom:16px;}
 #gt-rotate-msg p{font-size:1.15rem;line-height:1.5;margin:0;}
-/* Mobile landscape base resets */
 @media screen and (max-height:600px) and (orientation:landscape){
   body{overflow:hidden!important;height:100vh!important;margin-top:0!important;padding-top:36px!important;box-sizing:border-box!important;display:block!important;}
   #gt-nav{height:36px!important;padding:0 12px!important;}
   #gt-nav a{font-size:12px!important;}
   h1{display:none!important;}
-  .wrap{display:grid!important;grid-template-columns:1fr 1fr!important;margin:0!important;padding:0 8px!important;gap:10px!important;box-sizing:border-box!important;max-width:none!important;overflow:hidden!important;transform-origin:top left!important;}
+  .footer-chip{display:none!important;}
+  .wrap{display:grid!important;grid-template-columns:1fr 1fr!important;margin:0!important;padding:0 6px!important;gap:6px!important;box-sizing:border-box!important;max-width:none!important;overflow:hidden!important;transform-origin:top left!important;}
+  /* Deck containers */
+  .deck{padding:6px 8px!important;border-radius:10px!important;}
+  .deck h2{font-size:10px!important;margin:0 0 4px!important;letter-spacing:.1em!important;}
+  /* Readouts grid - less gap and padding */
+  .readouts{gap:5px!important;margin:4px 0 5px!important;}
+  .tempo-box,.orig-box{padding:5px 8px!important;gap:4px!important;border-radius:10px!important;}
+  .tempo-title{font-size:9px!important;}
+  .tempo-value{font-size:clamp(12px,2vw,16px)!important;}
+  .tempoNow{font-size:inherit!important;}
+  /* TAP + QUARTZ LOCK */
+  .orig-top{gap:5px!important;}
+  .tap-btn{font-size:9px!important;padding:5px 8px!important;border-radius:8px!important;}
+  .chip{font-size:9px!important;padding:4px 7px!important;gap:4px!important;}
+  /* BPM edit row */
+  .bpm-edit{margin:3px 0!important;gap:4px!important;}
+  .btn{padding:3px 8px!important;font-size:11px!important;}
+  /* Rails - narrower */
+  .rail-wrap{min-height:auto!important;gap:8px!important;margin:4px 0 3px!important;}
+  .rail{width:24px!important;border-radius:8px!important;}
+  .rail .edge{left:3px!important;right:3px!important;top:5px!important;bottom:5px!important;border-radius:5px!important;}
+  .rail .endmark{font-size:7px!important;left:4px!important;right:4px!important;}
+  /* Stat text */
+  .stat{font-size:10px!important;}
 }
 </style></head>
 <body><nav id="gt-nav"><a href="https://guilteach.com#djs">← GuilTeach</a></nav><div id="gt-rotate-msg"><div class="gt-icon">📱 ↻</div><p>Gira el dispositivo<br>para usar esta herramienta</p></div>
