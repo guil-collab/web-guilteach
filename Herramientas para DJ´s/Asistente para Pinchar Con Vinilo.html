@@ -457,20 +457,11 @@ body{background:#111827!important;font-family:'Segoe UI',system-ui,-apple-system
 #gt-nav a{color:#7eb8ff;text-decoration:none;font-size:14px;font-weight:500;letter-spacing:0.3px;font-family:'Segoe UI',system-ui,sans-serif;}
 #gt-nav a:hover{color:#a8d0ff;}
 </style><style id="gt-orient">
-@media screen and (orientation:portrait){
-  html{
-    transform:rotate(90deg);
-    transform-origin:left top;
-    width:100vh;
-    height:100vw;
-    overflow:hidden;
-    position:absolute;
-    top:100%;
-    left:0;
-  }
-}
+#gt-rotate-msg{display:none;position:fixed;inset:0;z-index:99999;background:#111827;color:#e2e8f0;flex-direction:column;align-items:center;justify-content:center;font-family:'Segoe UI',system-ui,sans-serif;text-align:center;padding:30px;}
+#gt-rotate-msg .gt-icon{font-size:56px;margin-bottom:16px;}
+#gt-rotate-msg p{font-size:1.15rem;line-height:1.5;margin:0;}
 </style></head>
-<body><nav id="gt-nav"><a href="https://guilteach.com#djs">← GuilTeach</a></nav>
+<body><nav id="gt-nav"><a href="https://guilteach.com#djs">← GuilTeach</a></nav><div id="gt-rotate-msg"><div class="gt-icon">📱 ↻</div><p>Gira el dispositivo<br>para usar esta herramienta</p></div>
   <h1>Dual Deck Vinyl Tempo Helper</h1>
 
   <div class="wrap">
@@ -984,14 +975,22 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 <script>
 (function(){
-  function lock(){
+  var msg=null;
+  function check(){
+    if(!msg)msg=document.getElementById('gt-rotate-msg');
+    if(!msg)return;
+    msg.style.display=(window.innerHeight>window.innerWidth)?'flex':'none';
+  }
+  function lockL(){
     if(screen.orientation&&screen.orientation.lock){
       screen.orientation.lock('landscape').catch(function(){});
     }
+    check();
   }
-  lock();
-  document.addEventListener('DOMContentLoaded',lock);
-  window.addEventListener('orientationchange',lock);
+  window.addEventListener('resize',check);
+  window.addEventListener('orientationchange',function(){setTimeout(check,100);});
+  document.addEventListener('DOMContentLoaded',function(){lockL();check();});
+  lockL();
 })();
 </script></body>
 </html>
