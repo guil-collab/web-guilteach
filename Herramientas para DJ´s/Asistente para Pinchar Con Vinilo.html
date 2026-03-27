@@ -457,36 +457,16 @@ body{background:#111827!important;font-family:'Segoe UI',system-ui,-apple-system
 #gt-nav a{color:#7eb8ff;text-decoration:none;font-size:14px;font-weight:500;letter-spacing:0.3px;font-family:'Segoe UI',system-ui,sans-serif;}
 #gt-nav a:hover{color:#a8d0ff;}
 </style><style id="gt-orient">
-/* Portrait overlay */
 #gt-rotate-msg{display:none;position:fixed;inset:0;z-index:99999;background:#111827;color:#e2e8f0;flex-direction:column;align-items:center;justify-content:center;font-family:'Segoe UI',system-ui,sans-serif;text-align:center;padding:30px;}
 #gt-rotate-msg .gt-icon{font-size:56px;margin-bottom:16px;}
 #gt-rotate-msg p{font-size:1.15rem;line-height:1.5;margin:0;}
-/* Mobile landscape: zoom-scale everything to fill screen */
-@media screen and (max-height:520px) and (orientation:landscape){
-  body{
-    overflow:hidden!important;
-    height:100vh!important;
-    margin-top:0!important;
-    padding-top:36px!important;
-    box-sizing:border-box!important;
-    display:block!important;
-  }
+/* Mobile landscape base resets */
+@media screen and (max-height:600px) and (orientation:landscape){
+  body{overflow:hidden!important;height:100vh!important;margin-top:0!important;padding-top:36px!important;box-sizing:border-box!important;display:block!important;}
   #gt-nav{height:36px!important;padding:0 12px!important;}
   #gt-nav a{font-size:12px!important;}
   h1{display:none!important;}
-  .wrap{
-    zoom:0.55!important;
-    width:calc(100vw / 0.55)!important;
-    max-width:none!important;
-    height:calc((100vh - 36px) / 0.55)!important;
-    display:grid!important;
-    grid-template-columns:1fr 1fr!important;
-    margin:0!important;
-    padding:0 10px!important;
-    gap:12px!important;
-    box-sizing:border-box!important;
-    overflow:hidden!important;
-  }
+  .wrap{display:grid!important;grid-template-columns:1fr 1fr!important;margin:0!important;padding:0 8px!important;gap:10px!important;box-sizing:border-box!important;max-width:none!important;overflow:hidden!important;transform-origin:top left!important;}
 }
 </style></head>
 <body><nav id="gt-nav"><a href="https://guilteach.com#djs">← GuilTeach</a></nav><div id="gt-rotate-msg"><div class="gt-icon">📱 ↻</div><p>Gira el dispositivo<br>para usar esta herramienta</p></div>
@@ -1004,21 +984,45 @@ document.addEventListener('DOMContentLoaded', ()=>{
 <script>
 (function(){
   var msg=null;
+  function isMobileLandscape(){
+    return window.innerHeight<=600 && window.innerWidth>window.innerHeight;
+  }
   function check(){
     if(!msg)msg=document.getElementById('gt-rotate-msg');
     if(!msg)return;
     msg.style.display=(window.innerHeight>window.innerWidth)?'flex':'none';
   }
-  function lockL(){
+  function autoZoom(){
+    if(!isMobileLandscape())return;
+    var wrap=document.querySelector('.wrap');
+    if(!wrap)return;
+    // Reset first to measure natural size
+    wrap.style.transform='';
+    wrap.style.width='';
+    wrap.style.height='';
+    wrap.style.zoom='';
+    var availH=window.innerHeight-36;
+    var availW=window.innerWidth;
+    var natH=wrap.scrollHeight;
+    var natW=wrap.scrollWidth;
+    if(natH<=0||natW<=0)return;
+    var scale=Math.min(availH/natH, availW/natW, 1);
+    wrap.style.zoom=scale;
+    wrap.style.width=(availW/scale)+'px';
+    wrap.style.height=(availH/scale)+'px';
+    wrap.style.overflow='hidden';
+  }
+  function init(){
+    check();
     if(screen.orientation&&screen.orientation.lock){
       screen.orientation.lock('landscape').catch(function(){});
     }
-    check();
+    autoZoom();
   }
-  window.addEventListener('resize',check);
-  window.addEventListener('orientationchange',function(){setTimeout(check,100);});
-  document.addEventListener('DOMContentLoaded',function(){lockL();check();});
-  lockL();
+  window.addEventListener('resize',function(){check();autoZoom();});
+  window.addEventListener('orientationchange',function(){setTimeout(function(){check();autoZoom();},200);});
+  document.addEventListener('DOMContentLoaded',init);
+  if(document.readyState!=='loading')init();
 })();
 </script></body>
 </html>
